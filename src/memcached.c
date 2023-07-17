@@ -11,8 +11,9 @@
 #include <errno.h>
 #include "sock.h"
 #include "common.h"
-
 #include "parser.h"
+
+#define MEM_LIMIT 2 << 30 // Limite de memcache, en bytes
 
 /* Macro interna */
 #define READ(fd, buf, n) ({						\
@@ -67,18 +68,19 @@ int text_consume(struct eventloop_data *evd, char buf[2024], int fd, int blen)
 	return 0;
 }
 
-void limit_mem()
-{
-	/*Implementar*/
+// Setea el limite de uso de memoria
+void limit_mem(rlim_t lim) {
+  struct rlimit rl;
+  rl.rlim_cur = lim;
+  rl.rlim_max = lim;
+	setrlimit(RLIMIT_AS, (const struct rlimit*) &rl);
 }
 
-void handle_signals()
-{
+void handle_signals() {
 /*Capturar y manejar  SIGPIPE */
 }
 
-void server(int text_sock, int bin_sock)
-{
+void server(int text_sock, int bin_sock) {
 
 	/*Configurar Epoll
 	+
@@ -97,9 +99,8 @@ void server(int text_sock, int bin_sock)
 	*/
 }
 
-int main(int argc, char **argv)
-{
-	
+int main(int argc, char **argv) {
+	rlim_t limit = MEM_LIMIT;
 	int text_sock, bin_sock;
 
 	__loglevel = 2;
@@ -107,7 +108,7 @@ int main(int argc, char **argv)
 	handle_signals();
 
 	/*Función que limita la memoria*/
-	limit_mem();
+	limit_mem(limit);
 
 	text_sock = mk_tcp_sock(mc_lport_text);
 	if (text_sock < 0)
@@ -117,11 +118,9 @@ int main(int argc, char **argv)
 	if (bin_sock < 0)
 		quit("mk_tcp_sock.bin");
 
-
 	/*Inicializar la tabla hash, con una dimensión apropiada*/
 	/* 1 millón de entradas, por ejemplo*/
 	/* .....*/
-
 
 	/*Iniciar el servidor*/
 	server(text_sock, bin_sock);

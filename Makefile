@@ -1,5 +1,5 @@
-CC = clang
-CFLAGS += -Wall -O3
+CC = gcc
+CFLAGS += -Wall -Wextra -Werror #-O3
 LDFLAGS += -pthread
 
 all: memcached 

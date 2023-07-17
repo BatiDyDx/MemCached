@@ -6,6 +6,27 @@
 #include <stdlib.h>
 #include "log.h"
 
+// Funcion de copia
+typedef void *(*CopyFunction)(void *data);
+
+// Funcion de comparacion
+typedef int (*CompareFunction)(void *data1, void *data2);
+
+// Funcion de liberado de informacion
+typedef void (*DestroyFunction)(void *data);
+
+// Funcion de visualizacion
+typedef void (*VisitFunction)(void *data);
+
+// Funcion de hash
+typedef unsigned (*HashFunction)(void *data);
+
+/**
+ * Funcion de hash para strings propuesta por Kernighan & Ritchie en "The C
+ * Programming Language (Second Ed.)".
+ */
+unsigned KRHash(char *s);
+
 enum code {
 	PUT = 11,
 	DEL = 12,
@@ -29,7 +50,6 @@ struct eventloop_data {
 	int id;
 	int n_proc;
 };
-
 
 static const in_port_t mc_lport_text = 8888;
 static const in_port_t mc_lport_bin  = 8889;
