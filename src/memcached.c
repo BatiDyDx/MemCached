@@ -9,11 +9,11 @@
 #include <signal.h>
 #include <pthread.h>
 #include <errno.h>
+#include "memcached.h"
 #include "sock.h"
 #include "common.h"
 #include "parser.h"
-
-#define MEM_LIMIT 2 << 30 // Limite de memcache, en bytes
+#include "hash.h"
 
 /* Macro interna */
 #define READ(fd, buf, n) ({						\
@@ -24,11 +24,16 @@
 		return -1;						\
 	rc; })
 
+//! @brief Uso del programa memcache. Termina la ejecucion de este
+void usage() {
+  fprintf(stderr, "Uso: ./memcache [-n num_threads] [-m memory_size]");
+  exit(EXIT_FAILURE);
+}
+
 /* 0: todo ok, continua. -1 errores */
-int text_consume(struct eventloop_data *evd, char buf[2024], int fd, int blen)
-{
-	while (1) {
-		int rem = sizeof *buf - blen;
+int text_consume(struct eventloop_data *evd, char buf[TEXT_BUF_SIZE], int fd, int blen) {
+  while (1) {
+		int rem = TEXT_BUF_SIZE - blen;
 		assert (rem >= 0);
 		/* Buffer lleno, no hay comandos, matar */
 		if (rem == 0)
@@ -80,28 +85,56 @@ void handle_signals() {
 /*Capturar y manejar  SIGPIPE */
 }
 
-void server(int text_sock, int bin_sock) {
+void server(int text_sock, int bin_sock, unsigned nthreads) {
+	int epfd;
+  struct epoll_event event;
+  
+  system_data.n_proc = nthreads;
+  system_data.id = 0; // TODO Averiguar para que sirve
+  if ((epfd = epoll_create1(0)) < 0)
+    quit("Inicializado de epoll");
+  system_data.epfd = epfd;
+  event.events = EPOLLIN;
+  if (epoll_ctl(epfd, EPOLL_CTL_ADD, text_sock, &event) < 0)
+    quit("Escucha de epoll en socket de conexion modo texto");
+  if (epoll_ctl(epfd, EPOLL_CTL_ADD,  bin_sock, &event) < 0)
+    quit("Escucha de epoll en socket de conexion modo binario");
+  
+  /* Creacion de threads */
+  for (unsigned i = 0; i < nthreads; i++) {
+    
+  }
+}
 
-	/*Configurar Epoll
-	+
-	Creación de threads necesarios*/
-	/*La cantidad de threads debe ser fija al iniciar el servidor
-	todos los thread tendran acceso a la misma estructura epoll 
-	e iran manejando los eventos que vayan apareciendo.
-	*/
-
-	/*En algún momento al manejar eventos de tipo EPOLLIN de un cliente 
-	en modo texto invocaremos a text_consume: 
-	int rc;
-	rc = text_consume(evd, buff, fd, blen);
-	y  al parecido habrá que hacer al momento al manejar eventos de tipo 
-	EPOLLIN de un cliente en modo binario.	
-	*/
+void memcache_config(int argc, char** argv, unsigned* nthreads, rlim_t* limit) {
+  // marg y narg representan si se encontraron argumentos que determinan el limite
+  // o numero de hilos
+	int opt, marg = 0, narg = 0;
+  while ((opt = getopt(argc, argv, "n:m:")) != -1) {
+    switch (opt) {
+      case 'm':
+        *limit = atoi(optarg);
+        marg = 1;
+        break;
+      case 'n':
+        *nthreads = atoi(optarg);
+        narg = 1;
+        break;
+      default:
+        usage();
+    }
+  }
+  if (!marg)
+    *limit = MEM_LIMIT;
+  if (!narg)
+    *nthreads = sysconf(_SC_NPROCESSORS_ONLN);
 }
 
 int main(int argc, char **argv) {
-	rlim_t limit = MEM_LIMIT;
-	int text_sock, bin_sock;
+  int text_sock, bin_sock;
+  unsigned nthreads;
+  rlim_t limit;
+	memcache_config(argc, argv, &nthreads, &limit);
 
 	__loglevel = 2;
 
@@ -119,11 +152,10 @@ int main(int argc, char **argv) {
 		quit("mk_tcp_sock.bin");
 
 	/*Inicializar la tabla hash, con una dimensión apropiada*/
-	/* 1 millón de entradas, por ejemplo*/
-	/* .....*/
+	hashtable_init(HASH_CELLS, );
 
 	/*Iniciar el servidor*/
-	server(text_sock, bin_sock);
+	server(text_sock, bin_sock, nthreads);
 
 	return 0;
 }

@@ -20,8 +20,9 @@ int mk_tcp_sock(in_port_t port) {
 		quit("setsockopt");
 
   // Binding del socket al puerto de escucha
+  sa.sin_family = AF_INET;
   sa.sin_port = htons(port);
-  sa.sin_addr = "";
+  sa.sin_addr.s_addr = INADDR_ANY;
 	rc = bind(s, (const struct sockaddr*) &sa, sizeof(sa));
 	if (rc < 0)
 		quit("Binding de socket a puerto");
@@ -32,4 +33,3 @@ int mk_tcp_sock(in_port_t port) {
 
 	return s;
 }
-

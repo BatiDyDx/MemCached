@@ -3,35 +3,21 @@
 
 #include "common.h"
 
+// Tabla hash para datos de forma clave-valor en modo texto o binario
 typedef struct _HashTable *HashTable;
 
-/**
- * Initializes a hash table with a size given, and the required
- * functions used in the table
- */
-HashTable hashtable_init(unsigned size, CopyFunction copy,
-                          CompareFunction cmp, DestroyFunction destroy,
-                          HashFunction hash);
+//! @brief Inicializa una tabla hash para ser usada como cache
+//! @param size Cantidad de celdas de la cache
+//! @return Cache inicializada
+HashTable hashtable_init(unsigned size);
 
-/**
- * Returns the number of elements in the table
- */
 unsigned hashtable_nelems(HashTable table);
 
-/**
- * Returns the size of the table
- */
-unsigned hashtable_size(HashTable table);
-
-/**
- * Destroys the table
- */
+//! @brief Libera la memoria ocupada por una cache y sus datos almacenados
 void hashtable_free(HashTable table);
 
-/**
- * Inserts data in the table, or replaces it if already in the table
- */
-void hashtable_insert(HashTable table, void *data);
+void hashtable_insert(HashTable table, char mode, char *key, char *value,
+                    unsigned klen, unsigned vlen);
 
 /**
  * Returns the element that matches with data, or NULL if not in the table

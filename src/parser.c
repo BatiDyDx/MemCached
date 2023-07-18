@@ -16,12 +16,8 @@
 		return -1;						\
 	rc; })
 
-int text_parser(const char *buf, char *toks[3], int lens[3])
-{
-//	char *toks[10];
-//	int lens[10];
+int text_parser(const char *buf, char *toks[TEXT_MAX_TOKS], int lens[TEXT_MAX_TOKS]) {
 	int ntok;
-
 	log(3, "parser(%s)", buf);
 
 	/* Separar tokens */
@@ -29,7 +25,7 @@ int text_parser(const char *buf, char *toks[3], int lens[3])
 		char *p = buf;
 		ntok = 0;
 		toks[ntok++] = p;
-		while (ntok < 10 && (p = strchrnul(p, ' ')) && *p) {
+		while (ntok < TEXT_MAX_TOKS && (p = strchrnul(p, ' ')) && *p) {
 			/* Longitud token anterior */
 			lens[ntok-1] = p - toks[ntok-1];
 			*p++ = 0;
@@ -41,5 +37,4 @@ int text_parser(const char *buf, char *toks[3], int lens[3])
 
 	log(3, "checking '%s', ntok = %i", toks[0], ntok);
 	return ntok;
-
 }

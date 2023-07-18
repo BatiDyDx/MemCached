@@ -1,53 +1,51 @@
 #ifndef __LLIST_H__
-#define __LLIST_H__ // Listas enlazadas generales
+#define __LLIST_H__ // Listas enlazadas para datos de tipo texto o binario
 
 #include "common.h"
 #include <assert.h>
 #include <stdlib.h>
 
+typedef struct _Data {
+  char *key, *value;
+  unsigned klen, vlen;
+  char mode; // TEXT_MODE o BIN_MODE
+} Data;
+
 typedef struct _Node {
-    void *data;
-    struct _Node *next;
+  Data data;
+  struct _Node* next;
 } Node;
 
+// Implementación de listas enlazadas para datos de tipo clave-valor en modo texto o binario
 typedef Node *List;
 
-/*
-** Returns an empty list
-*/
+//! @return - Lista vacía
 List list_init();
 
-/*
-** Destroys the list
-*/
-void list_free(List list, DestroyFunction destroy);
+//! @brief Libera una lista enlazada
+//! @param[in] list - Lista a destruir
+void list_free(List list);
 
-/*
-** Returns 1 if the list is empty, 0 otherwise
-*/
+//! @brief Determina si una lista es vacia o no
+//! @param[in] list
+//! @return - 1 si es vacia, 0 si no lo es
 int list_empty(List list);
 
 /*
 ** Adds an element to the start of the list
 */
-List list_append_start(List list, void *data, CopyFunction copy);
+List list_add(List list, Data *data);
 
 /*
 ** Removes the first element of the list if its not empty, and returns the
 ** new first node
 */
-List list_remove_start(List list, DestroyFunction destroy);
-
-/*
-** Visits all nodes on the list, applying the function to the
-** data of each one
-*/
-void list_visit(List list, VisitFunction f);
+List list_remove_start(List list);
 
 /*
 ** Returns the data from a node that matches with data passed as argument,
 ** returns NULL if no node matches.
 */
-void* list_search(List list, void* data, CompareFunction cmp);
+char* list_search(List list, char mode, char* key, unsigned len);
 
-#endif /* __GLIST_H__ */
+#endif /* __LLIST_H__ */

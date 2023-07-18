@@ -6,20 +6,8 @@
 #include <stdlib.h>
 #include "log.h"
 
-// Funcion de copia
-typedef void *(*CopyFunction)(void *data);
-
-// Funcion de comparacion
-typedef int (*CompareFunction)(void *data1, void *data2);
-
-// Funcion de liberado de informacion
-typedef void (*DestroyFunction)(void *data);
-
-// Funcion de visualizacion
-typedef void (*VisitFunction)(void *data);
-
-// Funcion de hash
-typedef unsigned (*HashFunction)(void *data);
+#define TEXT_MODE 0
+#define BIN_MODE  1
 
 /**
  * Funcion de hash para strings propuesta por Kernighan & Ritchie en "The C
@@ -44,12 +32,6 @@ enum code {
 };
 
 int valid_rq(int code);
-
-struct eventloop_data {
-	int epfd; // file descriptor para epoll
-	int id;
-	int n_proc;
-};
 
 static const in_port_t mc_lport_text = 8888;
 static const in_port_t mc_lport_bin  = 8889;

@@ -3,45 +3,35 @@
 
 List list_init() { return NULL; }
 
-void list_free(List list, DestroyFunction destroy) {
-    Node *node_to_delete;
-    while (list != NULL) {
-        node_to_delete = list;
-        list = list->next;
-        destroy(node_to_delete->data);
-        free(node_to_delete);
-    }
+void list_free(List list) {
+  while (list != NULL) {
+    list = list_remove_start(list);
+  }
 }
 
-int list_empty(List list) { return (list == NULL); }
+int list_empty(List list) { return list == NULL; }
 
-List list_append_start(List list, void *data, CopyFunction copy) {
-    Node *new_node = malloc(sizeof(Node));
-    assert(new_node != NULL);
-    new_node->next = list;
-    new_node->data = copy(data);
-    return new_node;
+List list_add(List list, Data *data) {
+  Node *new_node = malloc(sizeof(Node));
+  assert(new_node != NULL);
+  new_node->next = list;
+  new_node->data = *data;
+  return new_node;
 }
 
-List list_remove_start(List list, DestroyFunction destroy) {
-    Node *tmp;
-    if (glist_empty(list))
-        return NULL;
-    tmp = list;
-    list = list->next;
-    destroy(tmp->data);
-    free(tmp);
-    return list;
+List list_remove_first(List list) {
+  List pnode;
+  if (list_empty(list))
+      return NULL;
+  pnode = list;
+  list = list->next;
+  free(pnode->data.key);
+  free(pnode->data.value);
+  free(pnode);
+  return list;
 }
 
-void list_visit(List list, VisitFunction f) {
-    for (Node *node = list; node != NULL; node = node->next)
-        f(node->data);
+char* list_search(List list, char mode, char* key, unsigned len) {
+  
 }
 
-void* list_search(List list, void* data, CompareFunction cmp) {
-    for (Node *node = list; node != NULL; node = node->next)
-        if (cmp(data, node->data) == 0)
-            return node->data;
-    return NULL;
-}
