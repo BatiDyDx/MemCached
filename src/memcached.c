@@ -14,21 +14,10 @@
 #include "common.h"
 #include "parser.h"
 #include "hash.h"
+#include "io.h"
 
-/* Macro interna */
-#define READ(fd, buf, n) ({						\
-	int rc = read(fd, buf, n);					\
-	if (rc < 0 && (errno == EAGAIN || errno == EWOULDBLOCK))	\
-		return 0;						\
-	if (rc <= 0)							\
-		return -1;						\
-	rc; })
-
-//! @brief Uso del programa memcache. Termina la ejecucion de este
-void usage() {
-  fprintf(stderr, "Uso: ./memcache [-n num_threads] [-m memory_size]");
-  exit(EXIT_FAILURE);
-}
+HashTable cache;
+struct eventloop_data eventloop;
 
 /* 0: todo ok, continua. -1 errores */
 int text_consume(struct eventloop_data *evd, char buf[TEXT_BUF_SIZE], int fd, int blen) {
@@ -78,32 +67,93 @@ void limit_mem(rlim_t lim) {
   struct rlimit rl;
   rl.rlim_cur = lim;
   rl.rlim_max = lim;
-	setrlimit(RLIMIT_AS, (const struct rlimit*) &rl);
+	setrlimit(RLIMIT_DATA, (const struct rlimit*) &rl);
+}
+
+void handle_interrupt(int _sig) {
+  close(eventloop.epfd);
+  close(eventloop.text_sock);
+  close(eventloop.bin_sock);
+  hashtable_free(cache);
+  exit(EXIT_SUCCESS);
 }
 
 void handle_signals() {
-/*Capturar y manejar  SIGPIPE */
+  struct sigaction s;
+  s.sa_handler = SIG_IGN;
+  if (!sigaction(SIGPIPE, (const struct sigaction*) &s, NULL));
+    quit("seteo de sigaction para SIGPIPE");
+
+  s.sa_handler = handle_interrupt;
+  if (!sigaction(SIGINT, (const struct sigaction*) &s, NULL));
+    quit("seteo de sigaction para SIGINT");
+  if (!sigaction(SIGTERM, (const struct sigaction*) &s, NULL));
+    quit("seteo de sigaction para SIGTERM");
+}
+
+//void enable_conn_privilege() {
+//  capset();
+//}
+
+void* worker_thread(void* _arg) {
+  int fdc;
+  struct epoll_event event;
+  while (1) {
+    int csock, mode;
+    fdc = epoll_wait(eventloop.epfd, &event, 1, -1);
+    if (fdc < 0)
+      quit("wait en epoll");
+    // Aceptar conexiones
+    if (event.data.fd == eventloop.text_sock || event.data.fd == eventloop.bin_sock) {
+      mode = event.data.fd == eventloop.text_sock ? TEXT_MODE : BIN_MODE;
+      csock = accept(eventloop.text_sock, NULL, 0);
+      log(2, "accept fd: %d modo: %d", csock, mode);
+      if (csock < 0)
+        quit("accept de nueva conexion");
+      event.data.ptr = (int*) malloc(2 * sizeof(int));
+      assert(!event.data.fd); // Vamos a tener que resolver manualmente si no hay memoria disponible
+      *( (int*) event.data.ptr) = csock;
+      *(((int*) event.data.ptr) + 1) = mode;
+      epoll_ctl(eventloop.epfd, EPOLL_CTL_ADD, csock, &event);
+    } else { // Atender peticion
+      csock = *(int*) event.data.ptr;
+      mode  = *(int*) event.data.ptr + 1;
+      log(2, "handle fd: %d modo: %d", csock, mode);
+      if (mode == TEXT_MODE) {
+
+      } else if (mode == BIN_MODE) {
+
+      } else
+        quit("modo incorrecto en epoll_wait");
+    }
+  }
 }
 
 void server(int text_sock, int bin_sock, unsigned nthreads) {
 	int epfd;
   struct epoll_event event;
+  pthread_t dummy_thread; // TODO Quizas hace falta almacenar info sobre hilos
   
-  system_data.n_proc = nthreads;
-  system_data.id = 0; // TODO Averiguar para que sirve
+  eventloop.n_proc = nthreads;
+  eventloop.id = 0; // TODO Averiguar para que sirve
   if ((epfd = epoll_create1(0)) < 0)
     quit("Inicializado de epoll");
-  system_data.epfd = epfd;
-  event.events = EPOLLIN;
+  eventloop.epfd = epfd;
+  event.events = EPOLLIN | EPOLLEXCLUSIVE;
+
+  eventloop.text_sock = text_sock;
+  event.data.fd = text_sock;
   if (epoll_ctl(epfd, EPOLL_CTL_ADD, text_sock, &event) < 0)
     quit("Escucha de epoll en socket de conexion modo texto");
+
+  eventloop.bin_sock = bin_sock;
+  event.data.fd = bin_sock;
   if (epoll_ctl(epfd, EPOLL_CTL_ADD,  bin_sock, &event) < 0)
     quit("Escucha de epoll en socket de conexion modo binario");
-  
+
   /* Creacion de threads */
-  for (unsigned i = 0; i < nthreads; i++) {
-    
-  }
+  for (unsigned i = 0; i < nthreads; i++)
+    pthread_create(&dummy_thread, NULL, worker_thread, NULL);
 }
 
 void memcache_config(int argc, char** argv, unsigned* nthreads, rlim_t* limit) {
@@ -134,11 +184,11 @@ int main(int argc, char **argv) {
   int text_sock, bin_sock;
   unsigned nthreads;
   rlim_t limit;
-	memcache_config(argc, argv, &nthreads, &limit);
-
 	__loglevel = 2;
 
+	memcache_config(argc, argv, &nthreads, &limit);
 	handle_signals();
+  enable_conn_privilege();
 
 	/*Función que limita la memoria*/
 	limit_mem(limit);
@@ -152,7 +202,7 @@ int main(int argc, char **argv) {
 		quit("mk_tcp_sock.bin");
 
 	/*Inicializar la tabla hash, con una dimensión apropiada*/
-	hashtable_init(HASH_CELLS, );
+	cache = hashtable_init(HASH_CELLS, );
 
 	/*Iniciar el servidor*/
 	server(text_sock, bin_sock, nthreads);

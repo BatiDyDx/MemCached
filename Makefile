@@ -4,7 +4,7 @@ LDFLAGS += -pthread
 
 all: memcached 
 
-memcached: memcached.o sock.o common.o log.o parser.o 
+memcached: src/memcached.o src/sock.o src/common.o src/log.o src/parser.o 
 
 clean:
 	rm -f memcached *.o

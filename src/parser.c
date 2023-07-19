@@ -7,15 +7,6 @@
 #include <errno.h>
 #include "parser.h"
 
-/* Macro interna */
-#define READ(fd, buf, n) ({						\
-	int rc = read(fd, buf, n);					\
-	if (rc < 0 && (errno == EAGAIN || errno == EWOULDBLOCK))	\
-		return 0;						\
-	if (rc <= 0)							\
-		return -1;						\
-	rc; })
-
 int text_parser(const char *buf, char *toks[TEXT_MAX_TOKS], int lens[TEXT_MAX_TOKS]) {
 	int ntok;
 	log(3, "parser(%s)", buf);
