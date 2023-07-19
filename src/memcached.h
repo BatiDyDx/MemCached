@@ -9,11 +9,11 @@
 #define TEXT_BUF_SIZE 2048
 #define BIN_BUF_SIZE
 
-struct stats {
+struct Stats {
   unsigned long get, put, del, keys;
 };
 
-struct stats text_stats, bin_stats;
+struct Stats stats_init();
 
 //! @struct - Estructura para almacenar informacion
 struct eventloop_data {
