@@ -81,14 +81,14 @@ int bin_parser(unsigned char *buf, char* toks[TEXT_MAX_TOKS]) {
 			printf("GET %s\n",arg);
 			break;
 
-		case 21:
+		case 21: // STATS
 			toks[ntok++] = "STATS";
 			printf("STATS \n");
 			break;
 			
 		default:
 			printf("Command not recognized\n");
-			return 1;
+			return -1;
 	}
 	return ntok;
 }
