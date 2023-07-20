@@ -110,14 +110,12 @@ void* worker_thread(void* _arg) {
       log(2, "accept fd: %d modo: %d", csock, mode);
       if (csock < 0)
         quit("accept de nueva conexion");
-      event.data.ptr = (int*) malloc(2 * sizeof(int));
       assert(!event.data.fd); // Vamos a tener que resolver manualmente si no hay memoria disponible
-      *( (int*) event.data.ptr) = csock;
-      *(((int*) event.data.ptr) + 1) = mode;
+      event.data.u64 = (unsigned long) mode << 32 | csock;
       epoll_ctl(eventloop.epfd, EPOLL_CTL_ADD, csock, &event);
     } else { // Atender peticion
-      csock = *(int*) event.data.ptr;
-      mode  = *(int*) event.data.ptr + 1;
+      csock = event.data.u64 & 0xFFFFFFFF;
+      mode  = (event.data.u64 & 0xFFFFFFFF00000000) >> 32;
       log(2, "handle fd: %d modo: %d", csock, mode);
       if (mode == TEXT_MODE) {
 
@@ -202,7 +200,7 @@ int main(int argc, char **argv) {
 		quit("mk_tcp_sock.bin");
 
 	/*Inicializar la tabla hash, con una dimensión apropiada*/
-	cache = hashtable_init(HASH_CELLS, );
+	cache = hashtable_init(HASH_CELLS);
 
 	/*Iniciar el servidor*/
 	server(text_sock, bin_sock, nthreads);
