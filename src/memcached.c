@@ -16,8 +16,16 @@
 #include "hash.h"
 #include "io.h"
 
-HashTable cache;
 struct eventloop_data eventloop;
+
+struct Stats stats_init() {
+  struct Stats s;
+  s.del = 0;
+  s.get = 0;
+  s.put = 0;
+  s.keys = 0;
+  return s;
+}
 
 /* 0: todo ok, continua. -1 errores */
 int text_consume(struct eventloop_data *evd, char buf[TEXT_BUF_SIZE], int fd, int blen) {
@@ -74,7 +82,7 @@ void handle_interrupt(int _sig) {
   close(eventloop.epfd);
   close(eventloop.text_sock);
   close(eventloop.bin_sock);
-  hashtable_free(cache);
+  //hashtable_free(cache);
   exit(EXIT_SUCCESS);
 }
 
@@ -118,7 +126,7 @@ void* worker_thread(void* _arg) {
       mode  = (event.data.u64 & 0xFFFFFFFF00000000) >> 32;
       log(2, "handle fd: %d modo: %d", csock, mode);
       if (mode == TEXT_MODE) {
-
+        
       } else if (mode == BIN_MODE) {
 
       } else

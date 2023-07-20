@@ -1,16 +1,64 @@
-#include "hash.h"
-#include "ll.h"
+#include <stdio.h>
 #include <assert.h>
 #include <stdlib.h>
+#include "queue.h"
+#include "hash.h"
 
-/**
- * Tabla hash implementada con encadenamiento externo
- */
+/* Listas enlazadas simples - Dedicadas a uso interno de la tabla hash */
+
+struct _LLNode {
+  struct Node *node; // Nodo de la cola, no confundir con el siguiente de la lista
+  struct _LLNode* next;
+};
+
+typedef struct _LLNode *List;
+
+List list_init() { return NULL; }
+
+void list_free(List list) {
+  while (list != NULL) {
+    list = list_remove_start(list);
+  }
+}
+
+int list_empty(List list) { return list == NULL; }
+
+List list_add(List list, struct Node *node) {
+  List new_node = malloc(sizeof(struct _LLNode));
+  assert(new_node != NULL);
+  new_node->next = list;
+  new_node->node = node;
+  return new_node;
+}
+
+List list_remove_first(List list) {
+  List pnode;
+  if (list_empty(list))
+      return NULL;
+  pnode = list;
+  list = list->next;
+  free(pnode);
+  return list;
+}
+/* -------------------------------------------------- */
+
+/* Tabla hash implementada con encadenamiento externo */
 struct _HashTable {
   List *elems;
   unsigned num_elems;
   unsigned size;
 };
+
+/**
+ * Funcion de hash para strings propuesta por Kernighan & Ritchie en "The C
+ * Programming Language (Second Ed.)".
+*/
+unsigned long hash_bytes(char *bytes, unsigned long nbytes) {
+  unsigned long hashval, i;
+  for (i = 0, hashval = 0; i < nbytes; ++i, bytes++)
+    hashval = *bytes + 31 * hashval;
+  return hashval;
+}
 
 HashTable hashtable_init(unsigned size) {
   HashTable table = malloc(sizeof(struct _HashTable));
@@ -20,7 +68,6 @@ HashTable hashtable_init(unsigned size) {
   assert(table->elems != NULL);
   table->num_elems = 0;
   table->size = size;
-
   return table;
 }
 
@@ -33,11 +80,10 @@ void hashtable_free(HashTable table) {
   free(table);
 }
 
-void hashtable_insert(HashTable table, char mode, char *key, char *value,
-                    unsigned klen, unsigned vlen) {
-  Data data = {key, value, klen, vlen, mode};
-  unsigned idx = hash(data) % table->size; // TODO determinar funciones de hash
-  table->elems[idx] = list_add(table->elems[idx], &data);
+void hashtable_insert(HashTable table, struct Node *node) {
+  // TODO - Desalojar si no hay espacio
+  unsigned idx = hash_bytes(node->data.key, node->data.klen) % table->size;
+  table->elems[idx] = list_add(table->elems[idx], node);
 }
 
 void* hashtable_search(HashTable table, void *data) {

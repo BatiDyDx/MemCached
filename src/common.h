@@ -9,12 +9,6 @@
 #define TEXT_MODE 0
 #define BIN_MODE  1
 
-/**
- * Funcion de hash para strings propuesta por Kernighan & Ritchie en "The C
- * Programming Language (Second Ed.)".
- */
-unsigned KRHash(char *s);
-
 enum code {
 	PUT = 11,
 	DEL = 12,
