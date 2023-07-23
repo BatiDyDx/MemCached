@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include <stdlib.h>
+#include <pthread.h>
 #include "queue.h"
 #include "hash.h"
 
@@ -17,7 +18,7 @@ List list_init() { return NULL; }
 
 void list_free(List list) {
   while (list != NULL) {
-    list = list_remove_start(list);
+    list = list_remove_first(list);
   }
 }
 
@@ -42,10 +43,13 @@ List list_remove_first(List list) {
 }
 /* -------------------------------------------------- */
 
+#define CMP_KEYS(K1, LEN1, K2, LEN2) (LEN1 == LEN2 && memcmp(K1, K2, LEN1))
+
 /* Tabla hash implementada con encadenamiento externo */
 struct _HashTable {
   List *elems;
-  unsigned num_elems;
+  unsigned nregions;
+  pthread_mutex_t *region_locks;
   unsigned size;
 };
 
@@ -60,14 +64,19 @@ unsigned long hash_bytes(char *bytes, unsigned long nbytes) {
   return hashval;
 }
 
-HashTable hashtable_init(unsigned size) {
+HashTable hashtable_init(unsigned size, unsigned nregions) {
   HashTable table = malloc(sizeof(struct _HashTable));
   assert(table != NULL);
   // We ask for 0 initialized memory (every element is a NULL pointer)
   table->elems = calloc(size, sizeof(List));
   assert(table->elems != NULL);
-  table->num_elems = 0;
+  table->nregions = nregions;
   table->size = size;
+  table->region_locks = malloc(sizeof(pthread_mutex_t) * nregions);
+  if (!table->region_locks)
+    quit("malloc de locks para tabla hash");
+  for (int i = 0; i < nregions; i++)
+    pthread_mutex_init(table->region_locks + i, NULL);
   return table;
 }
 
@@ -76,43 +85,63 @@ unsigned hashtable_size(HashTable table) { return table->size; }
 void hashtable_free(HashTable table) {
   for (unsigned idx = 0; idx < table->size; ++idx)
     list_free(table->elems[idx]);
+  for (int i = 0; i < table->nregions; i++)
+    pthread_mutex_destroy(table->region_locks + i);
   free(table->elems);
   free(table);
 }
 
+// Esta funcion asume que la llave no se encuentra repetida
+// Esto es garantizado por la implementacion de cache
 void hashtable_insert(HashTable table, struct Node *node) {
-  // TODO - Desalojar si no hay espacio
+  // TODO - Posible optimizacion: La interfaz de cache busca el nodo y si no esta
+  // lo inserta, esto lleva a caclular dos veces el hash
   unsigned idx = hash_bytes(node->data.key, node->data.klen) % table->size;
+  pthread_mutex_t *lock = table->region_locks + (idx % table->nregions);
+  pthread_mutex_lock(lock);
   table->elems[idx] = list_add(table->elems[idx], node);
+  pthread_mutex_unlock(lock);
 }
 
-void* hashtable_search(HashTable table, void *data) {
-  unsigned idx = table->hash(data) % table->size;
-  return list_search(table->elems[idx], data, table->cmp);
+struct Node* hashtable_search(HashTable table, char* key, unsigned klen) {
+  int found = 0;
+  List list;
+  unsigned idx = hash_bytes(key, klen) % table->size;
+  pthread_mutex_t *lock = table->region_locks + (idx % table->nregions);
+  pthread_mutex_lock(lock);
+  list = table->elems[idx];
+  while (list && !found) {
+    if (CMP_KEYS(key, klen, list->node->data.key, list->node->data.klen))
+      found = 1;
+    else
+      list = list->next;
+  }
+  pthread_mutex_unlock(lock);
+  return list;
 }
 
-void hashtable_remove(HashTable table, void *data) {
-  unsigned idx = table->hash(data) % table->size;
+int hashtable_remove(HashTable table, char *key, unsigned klen) {
+  unsigned idx = hash_bytes(key, klen) % table->size;
+  pthread_mutex_t *lock = table->region_locks + (idx % table->nregions);
+  pthread_mutex_lock(lock);
   List list = table->elems[idx];
-  // If list is empty, return
-  if (list_empty(list))
-    return;
-  // If the element to remove is in the first node of the list then we update
-  // the table to point to the second node and free the first one
-  else if (table->cmp(data, list->data) == 0) {
-    table->num_elems--;
-    table->elems[idx] = list_remove_start(list, table->destroy);
-    return;
-  } else {
-    while (!list_empty(list->next)) {
-      if (table->cmp(data, list->next->data) == 0) {
-        List tmp = list->next;
-        table->num_elems--;
-        list->next = tmp->next;
-        table->destroy(tmp->data);
-        free(tmp);
-        break;
-      }
+  if (list_empty(list)) {
+    pthread_mutex_unlock(lock);
+    return 0;
+  } else if (CMP_KEYS(key, klen, list->node->data.key, list->node->data.klen)) {
+    table->elems[idx] = list_remove_start(list);
+    pthread_mutex_unlock(lock);
+    return 1;
+  }
+  while (!list_empty(list->next)) {
+    if (CMP_KEYS(key, klen, list->next->node->data.key, list->next->node->data.klen)) {
+      List tmp = list->next;
+      list->next = tmp->next;
+      free(tmp);
+      pthread_mutex_unlock(lock);
+      return 1;
     }
   }
+  pthread_mutex_unlock(lock);
+  return 0;
 }

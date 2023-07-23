@@ -47,8 +47,6 @@ void queue_pop(Queue q) {
     q->last = NULL;
   q->first = node->next;
   q->first->prev = NULL;
-  free(node->data.key);
-  free(node->data.value);
   free(node);
 }
 
@@ -62,7 +60,4 @@ void queue_remove(Queue q, struct Node *node) {
   else
     node->next->prev = node->prev;
   q->len--;
-  free(node->data.key);
-  free(node->data.value);
-  free(node);
 }

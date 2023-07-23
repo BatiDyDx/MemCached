@@ -9,12 +9,6 @@
 #define TEXT_BUF_SIZE 2048
 #define BIN_BUF_SIZE
 
-struct Stats {
-  unsigned long get, put, del, keys;
-};
-
-struct Stats stats_init();
-
 //! @struct - Estructura para almacenar informacion
 struct eventloop_data {
 	int epfd; // file descriptor para epoll

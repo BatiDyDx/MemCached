@@ -3,6 +3,15 @@
 #include <unistd.h>
 #include "common.h"
 
+int valid_rq(int code) {
+  switch (code) {
+    case PUT: case DEL: case GET: case STATS:
+      return 1;
+    default:
+      return 0;
+  }
+}
+
 const char *code_str(enum code e) {
 	switch (e) {
 	case PUT:	return "PUT";
@@ -17,6 +26,7 @@ const char *code_str(enum code e) {
 	case EBINARY:	return "EBINARY";
 	case EBIG:	return "EBIG";
 	case EUNK:	return "EUNK";
+  case EOOM:  return "EOOM";
 
 	default:
 		assert(0);

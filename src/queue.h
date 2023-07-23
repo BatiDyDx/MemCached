@@ -35,7 +35,7 @@ Data queue_start(Queue q);
 void queue_pop(Queue q);
 
 //! @brief Quita un elemento de la cola. Su uso esta destinado
-//! solo para la implementacion interna de la cache.
+//! solo para la implementacion interna de la cache. No libera el nodo
 void queue_remove(Queue q, struct Node *node);
 
 #endif

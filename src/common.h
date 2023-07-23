@@ -27,11 +27,13 @@ enum code {
 
 int valid_rq(int code);
 
+static const in_port_t mc_lport_text_priv = 888;
+static const in_port_t mc_lport_bin_priv  = 889;
+
 static const in_port_t mc_lport_text = 8888;
 static const in_port_t mc_lport_bin  = 8889;
 
-static inline void quit(char *s)
-{
+static inline void quit(char *s) {
 	perror(s);
 	exit(1);
 }
@@ -39,6 +41,7 @@ static inline void quit(char *s)
 #define STATIC_ASSERT(p)			\
 	int _ass_ ## __LINE__ [(!!(p)) - 1];
 
-const char * error_str(enum code e);
+const char *code_str(enum code e);
+const char *error_str(enum code e);
 
 #endif

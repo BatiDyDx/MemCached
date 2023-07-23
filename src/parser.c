@@ -52,7 +52,7 @@ int bin_parser(unsigned char *buf, char* toks[TEXT_MAX_TOKS]) {
 	p++;
 	int ntok = 0;
 	switch((int) *command) {
-		case 11: // PUT
+		case PUT:
 			toks[ntok++] = command;
 			unsigned char* arg1 = get_arg(p);
 			toks[ntok++] = arg1;
@@ -67,21 +67,21 @@ int bin_parser(unsigned char *buf, char* toks[TEXT_MAX_TOKS]) {
 			printf("PUT %s %s\n",arg1, arg2);
 			break;
 
-		case 12 : //DEL
+		case DEL:
 			toks[ntok++] = "DEL";
 			unsigned char* arg = get_arg(p);
 			toks[ntok++] = arg;
 			printf("DEL %s\n",arg);
 			break;
 
-		case 13: // GET
+		case GET:
 			toks[ntok++] = "GET";
 			arg = get_arg(p);
 			toks[ntok++] = arg;
 			printf("GET %s\n",arg);
 			break;
 
-		case 21: // STATS
+		case STATS:
 			toks[ntok++] = "STATS";
 			printf("STATS \n");
 			break;

@@ -1,20 +1,17 @@
 #ifndef __IO_H__
 #define __IO_H__
 
+#include <stdint.h>
 #include "memcached.h"
 
-/* Macro interna */
-#define READ(fd, buf, n) ({						\
-	int rc = read(fd, buf, n);					\
-	if (rc < 0 && (errno == EAGAIN || errno == EWOULDBLOCK))	\
-		return 0;						\
-	if (rc <= 0)							\
-		return -1;						\
-	rc; })
+enum IO_STATUS_CODE {
+  OK,      // No hubo problemas de lectura
+  NO_DATA, // No hay informacion para leer
+  ERROR,   // Error irrecuperable, cerrar conexion
+  CLOSED   // Se cerro la conexion
+};
 
-//! @brief Retorna una cadena con un formato estandar para estadisticas
-//! @param s Conjunto de estadisticas
-char* format_stats(struct stats s);
+enum IO_STATUS_CODE read_fd(int fd, char buf[], uint64_t size, uint64_t *rc);
 
 //! @brief Uso del programa. Termina la ejecución de este
 void usage();
