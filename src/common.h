@@ -4,6 +4,7 @@
 #include <netinet/ip.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include "log.h"
 
 #define TEXT_MODE 0
