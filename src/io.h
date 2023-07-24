@@ -5,7 +5,7 @@
 #include "memcached.h"
 
 enum IO_STATUS_CODE {
-  OK,      // No hubo problemas de lectura
+  OKEY,      // No hubo problemas de lectura
   NO_DATA, // No hay informacion para leer
   ERROR,   // Error irrecuperable, cerrar conexion
   CLOSED   // Se cerro la conexion
