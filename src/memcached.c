@@ -13,9 +13,11 @@
 #include "sock.h"
 #include "common.h"
 #include "text_processing.h"
-#include "hash.h"
+#include "bin_processing.h"
+#include "cache.h"
 #include "io.h"
 
+Cache cache;
 struct eventloop_data eventloop;
 
 // Setea el limite de uso de memoria
@@ -27,6 +29,7 @@ void limit_mem(rlim_t lim) {
 }
 
 void handle_interrupt(int _sig) {
+  (void) _sig;
   close(eventloop.epfd);
   close(eventloop.text_sock);
   close(eventloop.bin_sock);
@@ -37,13 +40,13 @@ void handle_interrupt(int _sig) {
 void handle_signals() {
   struct sigaction s;
   s.sa_handler = SIG_IGN;
-  if (!sigaction(SIGPIPE, (const struct sigaction*) &s, NULL));
+  if (!sigaction(SIGPIPE, (const struct sigaction*) &s, NULL))
     quit("seteo de sigaction para SIGPIPE");
 
   s.sa_handler = handle_interrupt;
-  if (!sigaction(SIGINT, (const struct sigaction*) &s, NULL));
+  if (!sigaction(SIGINT, (const struct sigaction*) &s, NULL))
     quit("seteo de sigaction para SIGINT");
-  if (!sigaction(SIGTERM, (const struct sigaction*) &s, NULL));
+  if (!sigaction(SIGTERM, (const struct sigaction*) &s, NULL))
     quit("seteo de sigaction para SIGTERM");
 }
 
@@ -149,14 +152,13 @@ int main(int argc, char **argv) {
 
 	text_sock = mk_tcp_sock(mc_lport_text);
 	if (text_sock < 0)
-		quit("mk_tcp_sock.text");
+    quit("mk_tcp_sock.text");
 
 	bin_sock = mk_tcp_sock(mc_lport_bin);
 	if (bin_sock < 0)
-		quit("mk_tcp_sock.bin");
+    quit("mk_tcp_sock.bin");
 
-	/*Inicializar la tabla hash, con una dimensión apropiada*/
-	hashtable_init(HASH_CELLS);
+	cache = cache_init(HASH_CELLS, NREGIONS);
 
 	/*Iniciar el servidor*/
 	server(text_sock, bin_sock, nthreads);

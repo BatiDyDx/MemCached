@@ -1,10 +1,12 @@
 CC = gcc
 CFLAGS += -Wall -Wextra -Werror #-O3
 LDFLAGS += -pthread
+SOURCE = $(wildcard src/*.c)
+SOURCE_O = $(SOURCE:c=o)
 
 all: memcached 
 
-memcached: src/memcached.o src/sock.o src/common.o src/log.o src/parser.o 
+memcached: $(SOURCE_O)
 
 clean:
 	rm -f memcached *.o
@@ -13,7 +15,7 @@ run: all
 	./memcached
 
 .deps.mk:
-	$(CC) -MM *.c > .deps.mk
+	$(CC) -MM src/*.c > .deps.mk
 
 .PHONY: all clean run
 

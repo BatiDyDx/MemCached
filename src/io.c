@@ -1,6 +1,7 @@
 #include "io.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <errno.h>
 
 enum IO_STATUS_CODE read_fd(int fd, char buf[], uint64_t size, uint64_t *rc) {
