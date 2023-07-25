@@ -3,17 +3,16 @@
 
 #define BIN_MAX_TOKS 3
 
-//! @brief Funcion de parseo binario. Recibe un file descriptor 
-//! y una cantidad de argumentos (tokens) a leer. Retorna los
-//! tokens en el array 'toks' y sus respectivas longitudes en 'toks_len' 
-//!
-//! @param[in] fd - file descriptor.
-//! @param[out] toks - tokens del comando
-//! @param[out] toks_len - longitudes de los tokens del comando
-//! @param[in] ntoks - cantidad de tokens a recuperar.
-int bin_parser(int fd, char *toks[], int *toks_len , int ntoks);
-
-
+//! @brief Función de manejo de entrada en binario. 
 int bin_handler(int fd);
+
+//! @brief Parser binario.
+//!
+//! @param[in] fd - int. file descriptor.
+//! @param[out] toks - char *: tokens del comando.
+//! @param[out] lens - int *: longitudes de los tokens del comando.
+//! @param[in] ntoks - cantidad de tokens.
+int bin_parser(int fd, char *toks[], int *lens , int ntoks);
+
 
 #endif

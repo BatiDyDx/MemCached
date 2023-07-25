@@ -10,6 +10,9 @@
 #include "io.h"
 #include "cache.h"
 #include "log.h"
+#include "stats.h"
+
+extern Cache cache;
 
 /* 0: todo ok, continua. -1 errores */
 int text_handler(int fd) {
@@ -45,28 +48,32 @@ int text_handler(int fd) {
 			int lens[3] = {0};
 			int ntok;
 			op = text_parser(buf,toks,lens);
+      enum code res;
       switch (op) {
       case PUT:
-        //op = cache_put(cache, TEXT_MODE, toks[1], lens[1], &val, &vlen);
         log(3, "binary parse: PUT %s %s", toks[1], toks[2]);
-			  break;
+        res = cache_put(cache, TEXT_MODE,  toks[1], lens[1], toks[2], lens[2]);
+			  // manejar errores de res (EINVALID, etc);
+        // se malloquea memoria para el nombre del comando toks[0] hay que liberar!
+        // hay que agregar destruccion de toks;
+        break;
 
       case DEL:
-        //op = cache_del();
         log(3, "text parse: DEL %s", toks[1]);
+        res = cache_del(cache, TEXT_MODE, toks[1], lens[1]);
 			  break;
 
       case GET:
-        //op = cache_get(cache, TEXT_MODE, toks[1], lens[1], &val, &vlen);
-        // if (op == OK)
-        //   ans();
-        // else if (op == EINVALID) 
-        //   ans();
+			  char* val;
+		  	unsigned vlen;
         log(3, "text parse: GET %s", toks[1]);
+	  		res = cache_get(cache, TEXT_MODE, toks[1], lens[1], &val, &vlen);
         break;
 
       case STATS:
       	log(3, "text parse: STATS");
+        struct Stats stats_buf = stats_init();
+			  enum code res = cache_stats(cache, TEXT_MODE, &stats_buf);
         break;
       }
 			nlen -= len + 1;

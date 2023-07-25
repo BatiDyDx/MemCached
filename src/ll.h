@@ -7,6 +7,13 @@
 // Listas doblemente enlazadas con sentinela
 typedef struct _LLNode *List;
 
+struct _LLNode {
+  Data data;
+  LRUNode lru_priority;
+  struct _LLNode *prev, *next;
+};
+
+
 List list_init();
 
 uint32_t list_size();
@@ -25,12 +32,16 @@ LRUNode list_get_lru_priority(List list);
 
 void list_set_lru_priority(List list, LRUNode lru_priority);
 
-void list_insert(List list, Data data);
+List list_insert(List list, Data data);
 
 List list_search(List list, char mode, char *key, uint64_t klen);
 
-List list_remove(List list, char mode, char *key, uint64_t klen);
+void list_remove(List node);
+
+List list_search_and_remove(List list, char mode, char *key, uint64_t klen);
 
 List list_remove_first(List list);
+
+void ll_node_destroy(List node);
 
 #endif
