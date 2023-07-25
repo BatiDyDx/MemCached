@@ -42,13 +42,13 @@ enum code cache_put(Cache cache, char mode, char* key, unsigned klen, char *valu
 //! @param[in] mode Modo en que la llave y valor estan almacenados. Puede ser TEXT_MODE o BIN_MODE
 //! @param[in] key LLave asociada al valor a guardar
 //! @param[in] klen Tamaño en bytes de la llave.
-void cache_del(Cache cache, char mode, char* key, unsigned klen);
+enum code cache_del(Cache cache, char mode, char* key, unsigned klen);
 
 //! @brief Retorna las estadisticas de uso de una cache. Las estadisticas se
 //! almacenan segun el tipo del dato, texto o binario.
 //! @param[in] cache Cache sobre la cual se piden las estadisticas de uso
 //! @param[in] mode Modo sobre el cual se piden las estadisticas. Puede ser TEXT_MODE o BIN_MODE
-struct Stats cache_stats(Cache cache, char mode);
+enum code cache_stats(Cache cache, char mode, struct Stats* stats);
 
 LRUQueue cache_get_lru_queue(Cache cache);
 

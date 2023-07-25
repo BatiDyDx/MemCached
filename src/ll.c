@@ -58,13 +58,14 @@ void list_set_lru_priority(List list, LRUNode lru_priority) {
   list->lru_priority = lru_priority;
 }
 
-void list_insert(List list, Data data) {
+List list_insert(List list, Data data) {
   List new_node = malloc(sizeof(struct _LLNode));
   assert(new_node != NULL);
   new_node->prev = list;
   new_node->next = list->next;
   new_node->data = data;
   new_node->lru_priority = NULL;
+  return new_node;
 }
 
 List list_search(List list, char mode, char *key, uint64_t klen) {
@@ -99,4 +100,9 @@ List list_remove_first(List list) {
   list = list->next;
   free(pnode);
   return list;
+}
+
+void ll_node_destroy(List node) {
+  lru_node_destroy(node->lru_priority);
+  free(node);
 }

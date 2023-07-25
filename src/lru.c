@@ -119,3 +119,7 @@ int lru_dismiss(Cache cache) {
   unlock_queue(q);
   return i;
 }
+
+void lru_node_destroy(LRUNode node) {
+  free(node);
+}
