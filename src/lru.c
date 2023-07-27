@@ -18,8 +18,7 @@ struct _LRUQueue {
   struct _LRUNode *first, *last;
 };
 
-static inline void lru_free_node(LRUNode node) {
-  list_free_node(node->data_node);
+void lru_free_node(LRUNode node) {
   free(node);
 }
 
@@ -118,8 +117,4 @@ int lru_dismiss(Cache cache) {
   }
   unlock_queue(q);
   return i;
-}
-
-void lru_node_destroy(LRUNode node) {
-  free(node);
 }

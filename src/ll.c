@@ -4,7 +4,6 @@
 #include "lru.h"
 #include "ll.h"
 
-//#define CMP_KEYS(K1, LEN1, K2, LEN2) (LEN1 == LEN2 && memcmp(K1, K2, LEN1))
 static inline int cmp_keys(char mode1, char mode2, char *key1, char *key2, uint64_t len1, uint64_t len2) {
   return mode1 == mode2 && len1 == len2 && !memcmp(key1, key2, len1);
 }

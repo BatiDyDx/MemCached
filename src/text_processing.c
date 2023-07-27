@@ -52,7 +52,7 @@ int text_handler(int fd) {
       switch (op) {
       case PUT:
         log(3, "binary parse: PUT %s %s", toks[1], toks[2]);
-        res = cache_put(cache, TEXT_MODE,  toks[1], lens[1], toks[2], lens[2]);
+        res = cache_put(cache, TEXT_MODE, toks[1], lens[1], toks[2], lens[2]);
 			  // manejar errores de res (EINVALID, etc);
         // se malloquea memoria para el nombre del comando toks[0] hay que liberar!
         // hay que agregar destruccion de toks;
@@ -61,19 +61,23 @@ int text_handler(int fd) {
       case DEL:
         log(3, "text parse: DEL %s", toks[1]);
         res = cache_del(cache, TEXT_MODE, toks[1], lens[1]);
-			  break;
+        break;
 
       case GET:
-			  char* val;
-		  	unsigned vlen;
+        char* val;
+        unsigned vlen;
         log(3, "text parse: GET %s", toks[1]);
-	  		res = cache_get(cache, TEXT_MODE, toks[1], lens[1], &val, &vlen);
+        res = cache_get(cache, TEXT_MODE, toks[1], lens[1], &val, &vlen);
         break;
 
       case STATS:
-      	log(3, "text parse: STATS");
+        log(3, "text parse: STATS");
         struct Stats stats_buf = stats_init();
-			  enum code res = cache_stats(cache, TEXT_MODE, &stats_buf);
+        enum code res = cache_stats(cache, TEXT_MODE, &stats_buf);
+        break;
+
+      case EINVALID:
+        log(3, "text parse: invalid instruction");
         break;
       }
 			nlen -= len + 1;
@@ -96,23 +100,23 @@ enum code text_parser(unsigned char *buf, char *toks[TEXT_MAX_TOKS], int lens[TE
 	log(3, "text parser(%s)", buf);
 	/* Separar tokens */
 	{
-		char*p = buf;
-    char* aux_buf;
+		char *p = buf, *aux_buf;
 		ntok = 0;
 		aux_buf = p;
 		while (ntok < TEXT_MAX_TOKS - 1 && (p = strchrnul(p, ' ')) && *p) {
 			/* Longitud token anterior */
       lens[ntok] = p - aux_buf;
       toks[ntok] = malloc(lens[ntok]);
-			memmove(toks[ntok++],aux_buf,lens[ntok]);
-      *p++ = 0;
+			memmove(toks[ntok],aux_buf,lens[ntok]);
+      ntok++;
+      *p++ = 0; // ¿Se puede remover?
 			/* Comienzo nueva token */
 			aux_buf = p;
 		}
 		toks[ntok] = malloc(lens[ntok]);
     strcpy(toks[ntok++], aux_buf);
-
 	}
+
   if (ntok == 1 && !strcmp(toks[0], code_str(STATS)))
     op = STATS;
   else if (ntok == 2 && !strcmp(toks[0], code_str(GET)))
