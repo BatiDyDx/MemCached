@@ -7,18 +7,6 @@
 #include "cache.h"
 #include "ll.h"
 
-Data data_wrap(char *key, unsigned klen, char *val, unsigned vlen, char mode) {
-  Data data;
-  data.key = key;
-  data.val = val;
-  data.klen = klen;
-  data.vlen = vlen;
-  data.mode = mode;
-  return data;
-}
-
-LRUQueue cache_get_lru_queue(Cache cache) { return cache->queue; }
-
 struct _Cache {
   List *buckets;
   LRUQueue queue;
@@ -27,6 +15,15 @@ struct _Cache {
   pthread_mutex_t ts_lock, bs_lock;
   uint32_t nregions, size;
 };
+
+LRUQueue cache_get_lru_queue(Cache cache) { return cache->queue; }
+
+unsigned long hash_bytes(char *bytes, uint64_t nbytes) {
+  unsigned long hashval, i;
+  for (i = 0, hashval = 0; i < nbytes; ++i, bytes++)
+    hashval = *bytes + 31 * hashval;
+  return hashval;
+}
 
 /* --------------- CACHE ------------------- */
 #define NROW(val, len) (hash_bytes(val, len) % cache->size)
@@ -50,7 +47,7 @@ Cache cache_init(uint64_t size, uint64_t nregions) {
   cache->size = size;
   pthread_mutex_init(&cache->ts_lock, NULL);
   pthread_mutex_init(&cache->bs_lock, NULL);
-  for (int i = 0; i < nregions; i++)
+  for (uint32_t i = 0; i < nregions; i++)
     pthread_rwlock_init(cache->row_locks + i, NULL);
   return cache;
 }
@@ -76,7 +73,6 @@ enum code cache_get(Cache cache, char mode, char* key, unsigned klen, char **val
 enum code cache_put(Cache cache, char mode, char* key, unsigned klen, char *value, unsigned vlen) {
   unsigned idx = NROW(key, klen);
   WR_LOCK_ROW(idx);
-  int found = 0;
   List node = list_search(cache->buckets[idx], mode, key, klen);
   if (!node) {
     Data new_data = data_wrap(key, klen, value, vlen, mode);
@@ -92,7 +88,7 @@ enum code cache_put(Cache cache, char mode, char* key, unsigned klen, char *valu
     data.val = value;
     data.vlen = vlen;
     list_set_data(node, data);
-    reset_lru_status(cache->queue, node);
+    reset_lru_status(cache->queue, list_get_lru_priority(node));
   }
   UNLOCK_ROW(idx);
   return OK;

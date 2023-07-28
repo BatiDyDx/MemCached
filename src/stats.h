@@ -1,6 +1,8 @@
 #ifndef __STATS_H__
 #define __STATS_H__
 
+#include <stdint.h>
+
 struct Stats {
   uint64_t get, put, del, keys;
 };

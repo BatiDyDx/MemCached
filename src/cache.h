@@ -3,12 +3,9 @@
 
 #include "common.h"
 #include "lru.h"
-
-typedef struct {
-  char *key, *val;
-  uint64_t klen, vlen;
-  char mode;
-} Data;
+#include "cache.h"
+#include "ll.h"
+#include "stats.h"
 
 typedef struct _Cache *Cache;
 
@@ -52,8 +49,6 @@ enum code cache_stats(Cache cache, char mode, struct Stats* stats);
 
 LRUQueue cache_get_lru_queue(Cache cache);
 
-//! @brief Funcion especifica de la politica de desalojo LRU. Olvida una cierta cantidad
-//! de los datos menos accedidos en la cache.
-int cache_free_lru(Cache cache);
+int cache_try_dismiss(Cache cache, uint64_t idx, List data_node);
 
 #endif

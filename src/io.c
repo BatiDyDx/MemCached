@@ -4,14 +4,15 @@
 #include <unistd.h>
 #include <errno.h>
 
-enum IO_STATUS_CODE read_fd(int fd, char buf[], uint64_t size, uint64_t *rc) {
+enum IO_STATUS_CODE read_fd(int fd, char buf[], uint64_t size, long *rc) {
 	*rc = read(fd, buf, size);
-	if (rc < 0 && (errno == EAGAIN || errno == EWOULDBLOCK))
+	if (*rc < 0 && (errno == EAGAIN || errno == EWOULDBLOCK))
 		return NO_DATA;
-	if (rc == 0)
+	if (*rc == 0)
 		return CLOSED;
-  if (rc < 0)
+  if (*rc < 0)
     return ERROR;
+  return OKEY;
 }
 
 void usage() {

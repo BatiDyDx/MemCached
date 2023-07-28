@@ -1,10 +1,12 @@
 #include <stdlib.h>
 #include <assert.h>
+#include <string.h>
 #include "cache.h"
 #include "lru.h"
 #include "ll.h"
 
-static inline int cmp_keys(char mode1, char mode2, char *key1, char *key2, uint64_t len1, uint64_t len2) {
+static inline int cmp_keys(char mode1, char mode2, char *key1, char *key2,
+                           uint64_t len1, uint64_t len2) {
   return mode1 == mode2 && len1 == len2 && !memcmp(key1, key2, len1);
 }
 
@@ -13,6 +15,16 @@ struct _LLNode {
   LRUNode lru_priority;
   struct _LLNode *prev, *next;
 };
+
+Data data_wrap(char *key, uint64_t klen, char *val, uint64_t vlen, char mode) {
+  Data data;
+  data.key = key;
+  data.val = val;
+  data.klen = klen;
+  data.vlen = vlen;
+  data.mode = mode;
+  return data;
+}
 
 uint32_t list_size() {
   return sizeof(struct _LLNode);
@@ -30,12 +42,13 @@ void list_free(List list) {
   while (list) {
     List next = list->next;
     list_free_node(list);
+    list = next;
   }
 }
 
 int list_empty(List list) { return list->next == NULL; }
 
-List list_free_node(List node) {
+void list_free_node(List node) {
   free(node->data.key);
   free(node->data.val);
   free(node);
@@ -99,9 +112,4 @@ List list_remove_first(List list) {
   list = list->next;
   free(pnode);
   return list;
-}
-
-void ll_node_destroy(List node) {
-  lru_node_destroy(node->lru_priority);
-  free(node);
 }

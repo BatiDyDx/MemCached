@@ -1,4 +1,3 @@
-#include <stdint.h>
 #include <stdio.h>
 #include "stats.h"
 #include "log.h"
@@ -14,7 +13,7 @@ struct Stats stats_init() {
 
 int format_stats(struct Stats *s, char buf[], unsigned n) {
   log(4, "Format of stats");
-  int n = snprintf(buf, n, "OK PUTS=%lu DELS=%lu GETS=%lu KEYS=%lu\n",
+  int len = snprintf(buf, n, "OK PUTS=%lu DELS=%lu GETS=%lu KEYS=%lu\n",
             s->put, s->del, s->get, s->keys);
-  return n;
+  return len;
 }

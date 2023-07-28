@@ -18,6 +18,13 @@
 #include "io.h"
 
 Cache cache;
+
+struct Config {
+  unsigned nthreads;
+  rlim_t memsize;
+  int text_sock, bin_sock;
+};
+
 struct eventloop_data eventloop;
 
 // Setea el limite de uso de memoria
@@ -40,13 +47,13 @@ void handle_interrupt(int _sig) {
 void handle_signals() {
   struct sigaction s;
   s.sa_handler = SIG_IGN;
-  if (!sigaction(SIGPIPE, (const struct sigaction*) &s, NULL))
+  if (sigaction(SIGPIPE, (const struct sigaction*) &s, NULL) < 0)
     quit("seteo de sigaction para SIGPIPE");
 
   s.sa_handler = handle_interrupt;
-  if (!sigaction(SIGINT, (const struct sigaction*) &s, NULL))
+  if (sigaction(SIGINT, (const struct sigaction*) &s, NULL) < 0)
     quit("seteo de sigaction para SIGINT");
-  if (!sigaction(SIGTERM, (const struct sigaction*) &s, NULL))
+  if (sigaction(SIGTERM, (const struct sigaction*) &s, NULL) < 0)
     quit("seteo de sigaction para SIGTERM");
 }
 
@@ -54,7 +61,7 @@ void handle_signals() {
 //  capset();
 //}
 
-void* worker_thread(void* _arg) {
+void worker_thread(void) {
   int fdc;
   struct epoll_event event;
   while (1) {
@@ -74,7 +81,7 @@ void* worker_thread(void* _arg) {
     } else { // Atender peticion
       int status;
       csock = event.data.u64 & 0xFFFFFFFF;
-      mode  = (event.data.u64 & 0xFFFFFFFF00000000) >> 32;
+      mode  = (event.data.u64  >> 32) & 0xFFFFFFFF;
       log(2, "handle fd: %d modo: %d", csock, mode);
       if (mode == TEXT_MODE)
         status = text_handler(csock);
@@ -82,14 +89,22 @@ void* worker_thread(void* _arg) {
         status = bin_handler(csock);
       else
         assert(0);
+      (void) status; // Determinar si se cierra la conexion
     }
   }
+}
+
+int answer_client(int fd, int res) {
+  assert(0);
+  (void) fd;
+  (void) res;
+  return 0;
 }
 
 void server(int text_sock, int bin_sock, unsigned nthreads) {
 	int epfd;
   struct epoll_event event;
-  pthread_t dummy_thread; // TODO Quizas hace falta almacenar info sobre hilos
+  pthread_t threads[nthreads]; // TODO Quizas hace falta almacenar info sobre hilos
   
   eventloop.n_proc = nthreads;
   eventloop.id = 0; // TODO Averiguar para que sirve
@@ -110,58 +125,57 @@ void server(int text_sock, int bin_sock, unsigned nthreads) {
 
   /* Creacion de threads */
   for (unsigned i = 0; i < nthreads; i++)
-    pthread_create(&dummy_thread, NULL, worker_thread, NULL);
+    pthread_create(threads + i, NULL, (void* (*)(void*)) worker_thread, NULL);
 }
 
-void memcache_config(int argc, char** argv, unsigned* nthreads, rlim_t* limit) {
+int memcache_config(int argc, char** argv, struct Config *config) {
   // marg y narg representan si se encontraron argumentos que determinan el limite
   // o numero de hilos
-	int opt, marg = 0, narg = 0;
+	int opt;
+
+  config->nthreads = sysconf(_SC_NPROCESSORS_ONLN);
+  config->memsize  = MEM_LIMIT;
+
   while ((opt = getopt(argc, argv, "n:m:")) != -1) {
     switch (opt) {
       case 'm':
-        *limit = atoi(optarg);
-        marg = 1;
+        config->memsize = atoi(optarg);
         break;
       case 'n':
-        *nthreads = atoi(optarg);
-        narg = 1;
+        config->nthreads = atoi(optarg);
         break;
       default:
-        usage();
+        printf("Uso del programa\n");
     }
   }
-  if (!marg)
-    *limit = MEM_LIMIT;
-  if (!narg)
-    *nthreads = sysconf(_SC_NPROCESSORS_ONLN);
+
+  config->text_sock = atoi(argv[optind]);   // Tenemos garantizado que el caller pasa bien los argumentos
+  config->bin_sock  = atoi(argv[optind + 1]);
+
+  return 0;
 }
 
 int main(int argc, char **argv) {
-  int text_sock, bin_sock;
-  unsigned nthreads;
-  rlim_t limit;
-	__loglevel = 2;
+  struct Config config;
 
-	memcache_config(argc, argv, &nthreads, &limit);
+	memcache_config(argc, argv, &config);
 	handle_signals();
-  enable_conn_privilege();
 
-	/*Función que limita la memoria*/
-	limit_mem(limit);
+	/* Función que limita la memoria */
+	limit_mem(config.memsize);
 
-	text_sock = mk_tcp_sock(mc_lport_text);
-	if (text_sock < 0)
-    quit("mk_tcp_sock.text");
+	// text_sock = mk_tcp_sock(config->text_port);
+	// if (text_sock < 0)
+  //   quit("mk_tcp_sock.text");
 
-	bin_sock = mk_tcp_sock(mc_lport_bin);
-	if (bin_sock < 0)
-    quit("mk_tcp_sock.bin");
+	// bin_sock = mk_tcp_sock(config->bin_port);
+	// if (bin_sock < 0)
+  //   quit("mk_tcp_sock.bin");
 
 	cache = cache_init(HASH_CELLS, NREGIONS);
 
 	/*Iniciar el servidor*/
-	server(text_sock, bin_sock, nthreads);
+	server(config.text_sock, config.bin_sock, config.nthreads);
 
 	return 0;
 }

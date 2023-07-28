@@ -6,22 +6,21 @@
 #include <assert.h>
 #include <errno.h>
 #include "common.h"
+#include "memcached.h"
 #include "text_processing.h"
 #include "io.h"
 #include "cache.h"
 #include "log.h"
 #include "stats.h"
 
-extern Cache cache;
-
 /* 0: todo ok, continua. -1 errores */
 int text_handler(int fd) {
-  int blen;
+  int blen = 0;
   char buf[TEXT_BUF_SIZE];
   enum IO_STATUS_CODE err;
   while (1) {
-    uint64_t nread, rem = TEXT_BUF_SIZE - blen;
-    assert (rem >= 0);
+    long nread, rem = TEXT_BUF_SIZE - blen;
+    assert(rem >= 0);
 		/* Buffer lleno, no hay comandos, matar */
 		if (rem == 0)
 			return -1;
@@ -41,14 +40,15 @@ int text_handler(int fd) {
 		while ((p = memchr(p0, '\n', nlen)) != NULL) {
       /* Mensaje completo */
       enum code op;
+      enum code res;
+      char *val;
+      unsigned vlen;
 			int len = p - p0;
 			*p++ = 0;
 			log(3, "full command: <%s>", p0);
 			char *toks[3];
 			int lens[3] = {0};
-			int ntok;
 			op = text_parser(buf,toks,lens);
-      enum code res;
       switch (op) {
       case PUT:
         log(3, "binary parse: PUT %s %s", toks[1], toks[2]);
@@ -56,28 +56,34 @@ int text_handler(int fd) {
 			  // manejar errores de res (EINVALID, etc);
         // se malloquea memoria para el nombre del comando toks[0] hay que liberar!
         // hay que agregar destruccion de toks;
+        answer_client(fd, res);
         break;
 
       case DEL:
         log(3, "text parse: DEL %s", toks[1]);
         res = cache_del(cache, TEXT_MODE, toks[1], lens[1]);
+        answer_client(fd, res);
         break;
 
       case GET:
-        char* val;
-        unsigned vlen;
         log(3, "text parse: GET %s", toks[1]);
         res = cache_get(cache, TEXT_MODE, toks[1], lens[1], &val, &vlen);
+        answer_client(fd, res);
         break;
 
       case STATS:
         log(3, "text parse: STATS");
         struct Stats stats_buf = stats_init();
         enum code res = cache_stats(cache, TEXT_MODE, &stats_buf);
+        answer_client(fd, res);
         break;
 
       case EINVALID:
         log(3, "text parse: invalid instruction");
+        break;
+
+      default:
+        assert(0);
         break;
       }
 			nlen -= len + 1;
@@ -94,7 +100,7 @@ int text_handler(int fd) {
 	return 0;
 }
 
-enum code text_parser(unsigned char *buf, char *toks[TEXT_MAX_TOKS], int lens[TEXT_MAX_TOKS]) {
+enum code text_parser(char *buf, char *toks[TEXT_MAX_TOKS], int lens[TEXT_MAX_TOKS]) {
 	int ntok;
   enum code op;
 	log(3, "text parser(%s)", buf);

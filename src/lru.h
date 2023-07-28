@@ -1,21 +1,17 @@
 #ifndef __LRU_H__
 #define __LRU_H__
 
+#include "ll.h"
+#include "cache.h"
+
+typedef struct _Cache *Cache;
+
 #define LRU_FREE_SIZE 10 // Cantidad de elementos a desalojar cuando falta memoria
 
 typedef struct _LRUNode  *LRUNode;
 typedef struct _LRUQueue *LRUQueue;
 
-struct _LRUNode {
-  unsigned idx;
-  List data_node;
-  struct _LRUNode *prev, *next;
-};
-
-struct _LRUQueue {
-  pthread_mutex_t lock;
-  struct _LRUNode *first, *last;
-};
+void lru_free_node(LRUNode node);
 
 //! @brief Retorna una cola vacia 
 LRUQueue queue_init();
@@ -33,9 +29,8 @@ LRUNode queue_push(LRUQueue q, unsigned idx, List data_node);
 //! solo para la implementacion interna de la cache. No libera el nodo
 void queue_remove(LRUQueue q, LRUNode node);
 
-int reset_lru_status(LRUQueue q, LRUNode node);
+void reset_lru_status(LRUQueue q, LRUNode node);
 
-//! @brief Destruye un nodo del tipo LRUNode.
-void lru_node_destroy(LRUNode node);
+int lru_dismiss(Cache cache);
 
 #endif

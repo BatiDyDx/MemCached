@@ -35,16 +35,21 @@ LRUQueue queue_init() {
   assert(q);
   q->first = q->last = NULL;
   pthread_mutexattr_t attr;
-  pthread_mutex_attr_init(&attr);
+  pthread_mutexattr_init(&attr);
   pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
   pthread_mutex_init(&q->lock, &attr);
-  pthread_mutex_attr_destroy(&attr);
+  pthread_mutexattr_destroy(&attr);
   return q;
 }
 
 void queue_free(LRUQueue q) {
-  while (!queue_empty(q))
-    queue_pop(q);
+  LRUNode node = q->first;
+  while (node) {
+    LRUNode next = node->next;
+    free(node);
+    node = next;
+  }
+  free(q);
   pthread_mutex_destroy(&q->lock);
 }
 
@@ -88,7 +93,7 @@ void queue_remove(LRUQueue q, LRUNode node) {
   unlock_queue(q);
 }
 
-int reset_lru_status(LRUQueue q, LRUNode node) {
+void reset_lru_status(LRUQueue q, LRUNode node) {
   lock_queue(q);
   queue_remove(q, node);
 

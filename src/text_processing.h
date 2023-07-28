@@ -12,7 +12,7 @@ int text_handler(int fd);
 //! @param[in] buf - const char *.  No debe contener el '\n'
 //! @param[out] toks - char *: arreglo de tokens
 //! @param[out] lens - arreglo de enteros, contiene la longitud de los tokens
-enum code text_parser(unsigned char *buf, char *toks[TEXT_MAX_TOKS], int lens[TEXT_MAX_TOKS]);
+enum code text_parser(char *buf, char *toks[TEXT_MAX_TOKS], int lens[TEXT_MAX_TOKS]);
 
 
 #endif      

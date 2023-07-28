@@ -9,13 +9,13 @@
 #include "io.h"
 #include "log.h"
 #include "stats.h"
+#include "memcached.h"
 #include "bin_processing.h"
 
-extern Cache cache;
 
 /* 0: todo ok, continua. -1 errores */
 int bin_handler(int fd) {
-	uint64_t nread;
+	long nread;
 	char op;  
 	enum IO_STATUS_CODE err;
 
@@ -32,18 +32,20 @@ int bin_handler(int fd) {
 		int lens[2];
 		int ntoks;
 		enum code res;
-		switch (op)
-		{
-		case PUT: 
+    (void) ntoks;
+		switch (op){
+		case PUT:
 			ntoks = bin_parser(fd, toks, lens, 2); // consumiremos 2 argumentos
 			log(3, "binary parse: PUT %s %s", toks[0], toks[1]);
 			res = cache_put(cache, BIN_MODE,  toks[0], lens[0], toks[1], lens[1]);
+      answer_client(fd, res);
 			break;
 		
 		case DEL: 
 			ntoks = bin_parser(fd, toks, lens, 1); // cosumiremos 1 argumento
 			log(3, "binary parse: DEL %s %d", toks[0], lens[0]);
 			res = cache_del(cache, BIN_MODE, toks[0], lens[0]); 
+      answer_client(fd, res);
 			break;
 		
 		case GET:
@@ -52,12 +54,14 @@ int bin_handler(int fd) {
 			char* val;
 			unsigned vlen;
 			res = cache_get(cache, BIN_MODE, toks[0], lens[0], &val, &vlen);
+      answer_client(fd, res);
 			break;
 
 		case STATS:
 			log(3, "binary parse: STATS");
-			struct Stats stats_buf = stats_init();
+			struct Stats stats_buf;
 			enum code res = cache_stats(cache, BIN_MODE, &stats_buf);
+      answer_client(fd, res);
 			break;
     }
 		break;

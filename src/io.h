@@ -11,7 +11,7 @@ enum IO_STATUS_CODE {
   CLOSED   // Se cerro la conexion
 };
 
-enum IO_STATUS_CODE read_fd(int fd, char buf[], uint64_t size, uint64_t *rc);
+enum IO_STATUS_CODE read_fd(int fd, char buf[], uint64_t size, long *rc);
 
 //! @brief Uso del programa. Termina la ejecución de este
 void usage();

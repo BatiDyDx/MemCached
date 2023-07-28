@@ -1,18 +1,20 @@
 #ifndef __LINKED_LIST_H__
 #define __LINKED_LIST_H__
 
-#include "lru.h"
-#include "cache.h"
+#include <stdint.h>
+
+typedef struct {
+  char *key, *val;
+  uint64_t klen, vlen;
+  char mode;
+} Data;
+
+typedef struct _LRUNode *LRUNode;
 
 // Listas doblemente enlazadas con sentinela
 typedef struct _LLNode *List;
 
-struct _LLNode {
-  Data data;
-  LRUNode lru_priority;
-  struct _LLNode *prev, *next;
-};
-
+Data data_wrap(char *key, uint64_t klen, char *value, uint64_t vlen, char mode);
 
 List list_init();
 
@@ -22,7 +24,7 @@ void list_free(List list);
 
 int list_empty(List list);
 
-List list_free_node(List node);
+void list_free_node(List node);
 
 Data list_get_data(List list);
 

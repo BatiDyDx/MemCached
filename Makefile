@@ -4,12 +4,13 @@ LDFLAGS += -pthread
 SOURCE = $(wildcard src/*.c)
 SOURCE_O = $(SOURCE:c=o)
 
-all: memcached 
+all: memcached
 
 memcached: $(SOURCE_O)
+	$(CC) $(CFLAGS) $(LDFLAGS) $(SOURCE_O) -o memcached
 
 clean:
-	rm -f memcached *.o
+	rm -f memcached src/*.o
 
 run: all
 	./memcached
