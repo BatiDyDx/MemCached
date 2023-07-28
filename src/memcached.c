@@ -10,7 +10,6 @@
 #include <pthread.h>
 #include <errno.h>
 #include "memcached.h"
-#include "sock.h"
 #include "common.h"
 #include "text_processing.h"
 #include "bin_processing.h"
@@ -163,14 +162,6 @@ int main(int argc, char **argv) {
 
 	/* Función que limita la memoria */
 	limit_mem(config.memsize);
-
-	// text_sock = mk_tcp_sock(config->text_port);
-	// if (text_sock < 0)
-  //   quit("mk_tcp_sock.text");
-
-	// bin_sock = mk_tcp_sock(config->bin_port);
-	// if (bin_sock < 0)
-  //   quit("mk_tcp_sock.bin");
 
 	cache = cache_init(HASH_CELLS, NREGIONS);
 

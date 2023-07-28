@@ -1,6 +1,7 @@
 bin_processing.o: src/bin_processing.c src/cache.h src/common.h src/log.h \
  src/lru.h src/ll.h src/stats.h src/io.h src/memcached.h \
  src/bin_processing.h
+bind.o: src/bind.c src/sock.h src/common.h src/log.h
 cache.o: src/cache.c src/stats.h src/cache.h src/common.h src/log.h \
  src/lru.h src/ll.h
 common.o: src/common.c src/common.h src/log.h
