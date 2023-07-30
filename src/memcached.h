@@ -4,7 +4,7 @@
 #include <pthread.h>
 #include "cache.h"
 
-#define MEM_LIMIT 2UL << 30 // Limite de memcache, en bytes
+#define MEM_LIMIT 1UL << 30 // Limite de memcache, en bytes
 #define HASH_CELLS 1000000 // Cantidad de celdas en la cache
 #define NREGIONS 500 // Cantidad de regiones en que se divide la cache
 
@@ -21,6 +21,6 @@ struct eventloop_data {
 	int n_proc;
 };
 
-int answer_client(int fd, int res);
+int answer_text_client(int fd, enum code res);
 
 #endif

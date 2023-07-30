@@ -38,18 +38,37 @@ Cache cache_init(uint64_t size, uint64_t nregions) {
   Cache cache = malloc(sizeof(struct _Cache));
   assert(cache);
   cache->buckets    = malloc(list_size() * size);
-  cache->row_locks  = malloc(sizeof(pthread_mutex_t) * nregions);
+  cache->row_locks  = malloc(sizeof(pthread_rwlock_t) * nregions);
   assert(cache->buckets && cache->row_locks);
-  cache->queue  = queue_init();
+  cache->queue      = lru_init();
   cache->text_stats = stats_init();
   cache->bin_stats  = stats_init();
-  cache->nregions = nregions;
-  cache->size = size;
-  pthread_mutex_init(&cache->ts_lock, NULL);
-  pthread_mutex_init(&cache->bs_lock, NULL);
+  cache->nregions   = nregions;
+  cache->size       = size;
+  if (pthread_mutex_init(&cache->ts_lock, NULL) < 0)
+    perror("Inicializado lock para estadisticas de texto");
+  if (pthread_mutex_init(&cache->bs_lock, NULL) < 0)
+    perror("Inicializado lock para estadisticas binarias");
   for (uint32_t i = 0; i < nregions; i++)
-    pthread_rwlock_init(cache->row_locks + i, NULL);
+    if (pthread_rwlock_init(cache->row_locks + i, NULL) < 0)
+      perror("Inicializado de lock para region de cache");
+  for (uint32_t i = 0; i < size; i++)
+    cache->buckets[i] = list_init();
+  log(2, "Inicializado de cache con %lu casillas y %lu regiones", size, nregions);
   return cache;
+}
+
+void cache_destroy(Cache cache) {
+  for (uint32_t i = 0; i < cache->nregions; i++)
+    pthread_rwlock_destroy(cache->row_locks + i);
+  pthread_mutex_destroy(&cache->ts_lock);
+  pthread_mutex_destroy(&cache->bs_lock);
+  lru_destroy(cache->queue);
+  free(cache->row_locks);
+  for (uint32_t i = 0; i < cache->size; i++)
+    list_free(cache->buckets[i]);
+  free(cache->buckets);
+  free(cache);
 }
 
 enum code cache_get(Cache cache, char mode, char* key, unsigned klen, char **val, unsigned *vlen) {
@@ -78,7 +97,7 @@ enum code cache_put(Cache cache, char mode, char* key, unsigned klen, char *valu
     Data new_data = data_wrap(key, klen, value, vlen, mode);
     // unlock row hasta conseguir prioridad?
     List new_node = list_insert(cache->buckets[idx], new_data);
-    LRUNode lru_priority = queue_push(cache->queue, idx, new_node);
+    LRUNode lru_priority = lru_push(cache->queue, idx, new_node);
     // aca habria que lockear la row y hicimos el unlock antes
     list_set_lru_priority(new_node, lru_priority);
   } else {
@@ -104,7 +123,7 @@ enum code cache_del(Cache cache, char mode, char* key, unsigned klen) {
     return ENOTFOUND;
   } else {
     LRUNode lru_priority = list_get_lru_priority(del_node);
-    queue_remove(cache->queue, lru_priority);
+    lru_remove(cache->queue, lru_priority);
     UNLOCK_ROW(idx);
     lru_free_node(lru_priority);
     list_free_node(del_node);

@@ -14,6 +14,8 @@ typedef struct _Cache *Cache;
 //! @param size Tamaño de la cache
 Cache cache_init(uint64_t size, uint64_t nregions);
 
+void cache_destroy(Cache cache);
+
 //! @brief Recupera un dato almacenado en una cache
 //! @param[in] cache Cache en cuestión sobre la cual se realiza la operacion
 //! @param[in] mode Modo en que la llave y valor estan almacenados. Puede ser TEXT_MODE o BIN_MODE

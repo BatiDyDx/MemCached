@@ -22,15 +22,17 @@ void lru_free_node(LRUNode node) {
   free(node);
 }
 
-static inline int lock_queue(LRUQueue q) {
-  return pthread_mutex_lock(&q->lock);
+static inline void lru_lock(LRUQueue q) {
+  if (pthread_mutex_lock(&q->lock) < 0)
+    perror("lru_lock");
 }
 
-static inline int unlock_queue(LRUQueue q) {
-  return pthread_mutex_unlock(&q->lock);
+static inline void lru_unlock(LRUQueue q) {
+  if (pthread_mutex_unlock(&q->lock) < 0)
+    perror("lru_unlock");
 }
 
-LRUQueue queue_init() {
+LRUQueue lru_init() {
   LRUQueue q = malloc(sizeof(struct _LRUQueue));
   assert(q);
   q->first = q->last = NULL;
@@ -42,46 +44,46 @@ LRUQueue queue_init() {
   return q;
 }
 
-void queue_free(LRUQueue q) {
+void lru_destroy(LRUQueue q) {
   LRUNode node = q->first;
   while (node) {
     LRUNode next = node->next;
     free(node);
     node = next;
   }
-  free(q);
   pthread_mutex_destroy(&q->lock);
+  free(q);
 }
 
-int queue_empty(LRUQueue q) {
+int lru_empty(LRUQueue q) {
   int b;
-  lock_queue(q);
+  lru_lock(q);
   b = !q->first;
-  unlock_queue(q);
+  lru_unlock(q);
   return b;
 }
 
-LRUNode queue_push(LRUQueue q, unsigned idx, List data_node) {
+LRUNode lru_push(LRUQueue q, unsigned idx, List data_node) {
   LRUNode new_node = malloc(sizeof(struct _LRUNode));
   assert(new_node);
   new_node->idx = idx;
   new_node->data_node = data_node;
   
-  lock_queue(q);
+  lru_lock(q);
   q->last = new_node;
-  if (queue_empty(q))
+  if (lru_empty(q))
     q->first = new_node;
   else
     q->last->next = new_node;
 
   new_node->prev = q->last;
   new_node->next = NULL;
-  unlock_queue(q);
+  lru_unlock(q);
   return new_node;
 }
 
-void queue_remove(LRUQueue q, LRUNode node) {
-  lock_queue(q);
+void lru_remove(LRUQueue q, LRUNode node) {
+  lru_lock(q);
   if (q->first == node)
     q->first = node->next;
   else
@@ -90,36 +92,36 @@ void queue_remove(LRUQueue q, LRUNode node) {
     q->last = node->prev;
   else
     node->next->prev = node->prev;
-  unlock_queue(q);
+  lru_unlock(q);
 }
 
 void reset_lru_status(LRUQueue q, LRUNode node) {
-  lock_queue(q);
-  queue_remove(q, node);
+  lru_lock(q);
+  lru_remove(q, node);
 
-  if (queue_empty(q))
+  if (lru_empty(q))
     q->first = node;
   else
     q->last->next = node;
   node->prev = q->last;
   node->next = NULL;
   q->last = node;
-  unlock_queue(q);
+  lru_unlock(q);
 }
 
 int lru_dismiss(Cache cache) {
   int i;
   LRUQueue q = cache_get_lru_queue(cache);
-  lock_queue(q);
+  lru_lock(q);
   LRUNode node = q->first;
   for (i = 0; i < LRU_FREE_SIZE && node; node = node->next) {
     int suc = cache_try_dismiss(cache, node->idx, node->data_node);
     if (!suc)
       continue;
-    queue_remove(q, node); // Ojo, queue_remove bloquea la cola. Para solucionar esto podemos usar mutex recursivos
+    lru_remove(q, node); // Ojo, lru_remove bloquea la cola. Para solucionar esto podemos usar mutex recursivos
     lru_free_node(node);
     i++;
   }
-  unlock_queue(q);
+  lru_unlock(q);
   return i;
 }

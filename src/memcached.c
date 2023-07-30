@@ -31,15 +31,16 @@ void limit_mem(rlim_t lim) {
   struct rlimit rl;
   rl.rlim_cur = lim;
   rl.rlim_max = lim;
-	setrlimit(RLIMIT_DATA, (const struct rlimit*) &rl);
+  setrlimit(RLIMIT_DATA, (const struct rlimit*) &rl);
+  log(3, "Seteo limite de memoria a %luMB", lim / (1 << 20));
 }
 
-void handle_interrupt(int _sig) {
-  (void) _sig;
+void handle_interrupt(int sig) {
+  log(2, "Señal %d atrapada", sig);
   close(eventloop.epfd);
   close(eventloop.text_sock);
   close(eventloop.bin_sock);
-  //hashtable_free(cache);
+  cache_destroy(cache);
   exit(EXIT_SUCCESS);
 }
 
@@ -54,11 +55,8 @@ void handle_signals() {
     quit("seteo de sigaction para SIGINT");
   if (sigaction(SIGTERM, (const struct sigaction*) &s, NULL) < 0)
     quit("seteo de sigaction para SIGTERM");
+  log(3, "Configuracion de handlers de señales");
 }
-
-//void enable_conn_privilege() {
-//  capset();
-//}
 
 void worker_thread(void) {
   int fdc;
@@ -93,18 +91,29 @@ void worker_thread(void) {
   }
 }
 
-int answer_client(int fd, int res) {
-  assert(0);
-  (void) fd;
-  (void) res;
+int answer_text_client(int fd, enum code res) {
+  log(2, "Respuesta op: %d a %d", res, fd);
+  switch (res) {
+    case OK:
+      write(fd, "OK\n", 3); // Falta implementar respuesta con valor
+      break;
+    case EINVALID:
+      write(fd, "EINVALID\n", 9);
+      break;
+    case ENOTFOUND:
+      write(fd, "ENOTFOUND\n", 10);
+      break;
+    default:
+      assert(0);
+  }
   return 0;
 }
 
 void server(int text_sock, int bin_sock, unsigned nthreads) {
-	int epfd;
+  int epfd;
   struct epoll_event event;
   pthread_t threads[nthreads]; // TODO Quizas hace falta almacenar info sobre hilos
-  
+
   eventloop.n_proc = nthreads;
   eventloop.id = 0; // TODO Averiguar para que sirve
   if ((epfd = epoll_create1(0)) < 0)
@@ -122,16 +131,18 @@ void server(int text_sock, int bin_sock, unsigned nthreads) {
   if (epoll_ctl(epfd, EPOLL_CTL_ADD,  bin_sock, &event) < 0)
     quit("Escucha de epoll en socket de conexion modo binario");
 
+  log(2, "Configuracion epoll con fd %d", epfd);
   /* Creacion de threads */
   for (unsigned i = 0; i < nthreads; i++)
     pthread_create(threads + i, NULL, (void* (*)(void*)) worker_thread, NULL);
+  log(3, "Creacion de %u trabajadores", nthreads);
+  pthread_join(threads[0], NULL);
 }
 
 int memcache_config(int argc, char** argv, struct Config *config) {
   // marg y narg representan si se encontraron argumentos que determinan el limite
   // o numero de hilos
-	int opt;
-
+  int opt;
   config->nthreads = sysconf(_SC_NPROCESSORS_ONLN);
   config->memsize  = MEM_LIMIT;
 
@@ -157,16 +168,16 @@ int memcache_config(int argc, char** argv, struct Config *config) {
 int main(int argc, char **argv) {
   struct Config config;
 
-	memcache_config(argc, argv, &config);
-	handle_signals();
+  memcache_config(argc, argv, &config);
+  handle_signals();
 
-	/* Función que limita la memoria */
-	limit_mem(config.memsize);
+  /* Función que limita la memoria */
+  limit_mem(config.memsize);
 
-	cache = cache_init(HASH_CELLS, NREGIONS);
+  cache = cache_init(HASH_CELLS, NREGIONS);
 
-	/*Iniciar el servidor*/
-	server(config.text_sock, config.bin_sock, config.nthreads);
+  /*Iniciar el servidor*/
+  server(config.text_sock, config.bin_sock, config.nthreads);
 
-	return 0;
+  return 0;
 }

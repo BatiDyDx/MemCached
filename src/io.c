@@ -12,7 +12,7 @@ enum IO_STATUS_CODE read_fd(int fd, char buf[], uint64_t size, long *rc) {
 		return CLOSED;
   if (*rc < 0)
     return ERROR;
-  return OKEY;
+  return IO_OK;
 }
 
 void usage() {

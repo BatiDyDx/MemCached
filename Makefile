@@ -6,14 +6,14 @@ SOURCE = src/bin_processing.o src/cache.o src/common.o src/dalloc.o src/io.o\
 
 all: memcached bind
 
-bind: bind.o sock.o
-	$(CC) $(CFLAGS) $(LDFLAGS) src/bind.o src/sock.o -o server
-
 memcached: $(SOURCE)
 	$(CC) $(CFLAGS) $(LDFLAGS) $(SOURCE) -o memcached
 
+bind: src/bind.o src/sock.o src/log.o
+	$(CC) $(CFLAGS) $(LDFLAGS) src/bind.o src/sock.o src/log.o -o server
+
 clean:
-	rm -f memcached src/*.o
+	rm -f memcached server src/*.o
 
 run: all
 	./memcached

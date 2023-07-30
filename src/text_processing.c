@@ -51,31 +51,31 @@ int text_handler(int fd) {
 			op = text_parser(buf,toks,lens);
       switch (op) {
       case PUT:
-        log(3, "binary parse: PUT %s %s", toks[1], toks[2]);
+        log(3, "text parse: PUT %s %s", toks[1], toks[2]);
         res = cache_put(cache, TEXT_MODE, toks[1], lens[1], toks[2], lens[2]);
 			  // manejar errores de res (EINVALID, etc);
         // se malloquea memoria para el nombre del comando toks[0] hay que liberar!
         // hay que agregar destruccion de toks;
-        answer_client(fd, res);
+        answer_text_client(fd, res);
         break;
 
       case DEL:
         log(3, "text parse: DEL %s", toks[1]);
         res = cache_del(cache, TEXT_MODE, toks[1], lens[1]);
-        answer_client(fd, res);
+        answer_text_client(fd, res);
         break;
 
       case GET:
         log(3, "text parse: GET %s", toks[1]);
         res = cache_get(cache, TEXT_MODE, toks[1], lens[1], &val, &vlen);
-        answer_client(fd, res);
+        answer_text_client(fd, res);
         break;
 
       case STATS:
         log(3, "text parse: STATS");
         struct Stats stats_buf = stats_init();
         enum code res = cache_stats(cache, TEXT_MODE, &stats_buf);
-        answer_client(fd, res);
+        answer_text_client(fd, res);
         break;
 
       case EINVALID:

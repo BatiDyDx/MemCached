@@ -14,20 +14,20 @@ typedef struct _LRUQueue *LRUQueue;
 void lru_free_node(LRUNode node);
 
 //! @brief Retorna una cola vacia 
-LRUQueue queue_init();
+LRUQueue lru_init();
 
 //! @brief Libera la memoria de una cola
-void queue_free(LRUQueue q);
+void lru_destroy(LRUQueue q);
 
 //! @brief Calcula si una cola es vacia o no
-int queue_empty(LRUQueue q);
+int lru_empty(LRUQueue q);
 
 //! @brief Añade un elemento a la cola
-LRUNode queue_push(LRUQueue q, unsigned idx, List data_node);
+LRUNode lru_push(LRUQueue q, unsigned idx, List data_node);
 
 //! @brief Quita un elemento de la cola. Su uso esta destinado
 //! solo para la implementacion interna de la cache. No libera el nodo
-void queue_remove(LRUQueue q, LRUNode node);
+void lru_remove(LRUQueue q, LRUNode node);
 
 void reset_lru_status(LRUQueue q, LRUNode node);
 

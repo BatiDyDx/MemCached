@@ -39,11 +39,12 @@ List list_init() {
 }
 
 void list_free(List list) {
-  while (list) {
-    List next = list->next;
-    list_free_node(list);
-    list = next;
+  while (list->next) {
+    List node = list->next;
+    list->next = node->next;
+    list_free_node(node);
   }
+  free(list);
 }
 
 int list_empty(List list) { return list->next == NULL; }
