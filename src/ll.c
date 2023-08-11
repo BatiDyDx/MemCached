@@ -75,7 +75,10 @@ List list_insert(List list, Data data) {
   List new_node = malloc(sizeof(struct _LLNode));
   assert(new_node != NULL);
   new_node->prev = list;
+  if (list->next)
+    list->next->prev = new_node;
   new_node->next = list->next;
+  list->next = new_node;
   new_node->data = data;
   new_node->lru_priority = NULL;
   return new_node;
@@ -101,7 +104,7 @@ List list_search_and_remove(List list, char mode, char *key, uint64_t klen) {
   List node = list_search(list, mode, key, klen);
   if (!node)
     return NULL;
-  list_remove(list);
+  list_remove(node);
   return node;
 }
 

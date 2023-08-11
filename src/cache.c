@@ -90,6 +90,8 @@ enum code cache_get(Cache cache, char mode, char* key, unsigned klen, char **val
 }
 
 enum code cache_put(Cache cache, char mode, char* key, unsigned klen, char *value, unsigned vlen) {
+  printf("key (put) %s\n",key);
+  printf("klen (put) %u \n",klen);
   unsigned idx = NROW(key, klen);
   WR_LOCK_ROW(idx);
   List node = list_search(cache->buckets[idx], mode, key, klen);

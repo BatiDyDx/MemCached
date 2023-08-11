@@ -51,7 +51,7 @@ int text_handler(int fd) {
 			op = text_parser(buf,toks,lens);
       switch (op) {
       case PUT:
-        log(3, "text parse: PUT %s %s", toks[1], toks[2]);
+        log(3, "text parse: PUT %s, len %u, %s, len %u", toks[1], lens[1], toks[2], lens[2]);
         res = cache_put(cache, TEXT_MODE, toks[1], lens[1], toks[2], lens[2]);
 			  // manejar errores de res (EINVALID, etc);
         // se malloquea memoria para el nombre del comando toks[0] hay que liberar!
@@ -60,13 +60,13 @@ int text_handler(int fd) {
         break;
 
       case DEL:
-        log(3, "text parse: DEL %s", toks[1]);
+        log(3, "text parse: DEL %s, len %u", toks[1], lens[1]);
         res = cache_del(cache, TEXT_MODE, toks[1], lens[1]);
         answer_text_client(fd, res);
         break;
 
       case GET:
-        log(3, "text parse: GET %s", toks[1]);
+        log(3, "text parse: GET %s, len %u", toks[1], lens[1]);
         res = cache_get(cache, TEXT_MODE, toks[1], lens[1], &val, &vlen);
         answer_text_client(fd, res);
         break;
@@ -100,39 +100,84 @@ int text_handler(int fd) {
 	return 0;
 }
 
-enum code text_parser(char *buf, char *toks[TEXT_MAX_TOKS], int lens[TEXT_MAX_TOKS]) {
-	int ntok;
-  enum code op;
-	log(3, "text parser(%s)", buf);
-	/* Separar tokens */
-	{
-		char *p = buf, *aux_buf;
-		ntok = 0;
-		aux_buf = p;
-		while (ntok < TEXT_MAX_TOKS - 1 && (p = strchrnul(p, ' ')) && *p) {
-			/* Longitud token anterior */
-      lens[ntok] = p - aux_buf;
-      toks[ntok] = malloc(lens[ntok]);
-			memmove(toks[ntok],aux_buf,lens[ntok]);
-      ntok++;
-      *p++ = 0; // ¿Se puede remover?
-			/* Comienzo nueva token */
-			aux_buf = p;
-		}
-		toks[ntok] = malloc(lens[ntok]);
-    strcpy(toks[ntok++], aux_buf);
-	}
+// enum code text_parser(char *buf, char *toks[TEXT_MAX_TOKS], int lens[TEXT_MAX_TOKS]) {
+// 	int ntok;
+//   enum code op;
+// 	log(3, "text parser(%s)", buf);
+// 	/* Separar tokens */
+// 	{
+// 		char *p = buf, *aux_buf;
+// 		ntok = 0;
+// 		aux_buf = p;
+// 		while (ntok < TEXT_MAX_TOKS - 1 && (p = strchrnul(p, ' ')) && *p) {
+// 			/* Longitud token anterior */
+//       lens[ntok] = p - aux_buf;
+//       toks[ntok] = malloc(lens[ntok]);
+// 			memmove(toks[ntok],aux_buf,lens[ntok]);
+//       ntok++;
+//       *p++ = 0; // ¿Se puede remover?
+// 			/* Comienzo nueva token */
+// 			aux_buf = p;
+// 		}
+//     lens[ntok] = p - aux_buf;
+// 		toks[ntok] = malloc(lens[ntok]);
+//     memmove(toks[ntok], aux_buf, lens[ntok]);
+//     ntok++;
+// 	}
+  
+//   printf("op %s\n",toks[0]);
+//   printf("ntok %i\n",ntok);
+//   if (ntok == 1 && !strcmp(toks[0], code_str(STATS)))
+//     op = STATS;
+//   else if (ntok == 2 && !strcmp(toks[0], code_str(GET)))
+//     op = GET;
+//   else if (ntok == 2 && !strcmp(toks[0], code_str(DEL)))
+//     op = DEL;
+//   else if (ntok == 3 && !strcmp(toks[0], code_str(PUT)))
+//     op = PUT;
+//   else
+//     op = EINVALID;
+// 	log(3, "op code: %d, ntok = %i", op, ntok);
+//   if (EINVALID)
+//     return EINVALID;
+//   for ()
+// 	return op;
+// }
 
-  if (ntok == 1 && !strcmp(toks[0], code_str(STATS)))
+enum code text_parser(char *buf, char *toks[TEXT_MAX_TOKS], int lens[TEXT_MAX_TOKS]) {
+  enum code op;
+  const char *delim = " \t\n";
+  int ntoks = 0;
+
+  toks[0] = strtok(buf, delim);
+  if (toks[0])
+    ntoks++;
+  for (int i = 1; i < TEXT_MAX_TOKS; i++) {
+    toks[i] = strtok(NULL, delim);
+    if (toks[i])
+      ntoks++;
+  }
+
+  if (strtok(NULL, buf)) // Mas de 3 argumentos es un comando invalido
+    op = EINVALID;
+  else if (ntoks == 1 && !strcmp(toks[0], code_str(STATS)))
     op = STATS;
-  else if (ntok == 2 && !strcmp(toks[0], code_str(GET)))
+  else if (ntoks == 2 && !strcmp(toks[0], code_str(GET)))
     op = GET;
-  else if (ntok == 2 && !strcmp(toks[0], code_str(DEL)))
+  else if (ntoks == 2 && !strcmp(toks[0], code_str(DEL)))
     op = DEL;
-  else if (ntok == 3 && !strcmp(toks[0], code_str(PUT)))
+  else if (ntoks == 3 && !strcmp(toks[0], code_str(PUT)))
     op = PUT;
   else
     op = EINVALID;
-	log(3, "op code: %d, ntok = %i", op, ntok);
+	log(3, "op code: %d, ntoks = %i", op, ntoks);
+  if (op != EINVALID && op != STATS) {
+    for (int i = 1; i < ntoks; i++) {
+      lens[i] = strlen(toks[i]);
+      char* tmp = malloc(lens[i]);
+      memcpy(tmp, toks[i], lens[i]);
+      toks[i] = tmp;
+    }
+  }
 	return op;
 }
