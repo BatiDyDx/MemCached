@@ -11,6 +11,7 @@
 #include "io.h"
 #include "cache.h"
 #include "log.h"
+#include "dalloc.h"
 #include "stats.h"
 
 /* 0: todo ok, continua. -1 errores */
@@ -52,34 +53,41 @@ int text_handler(int fd) {
       switch (op) {
       case PUT:
         log(3, "text parse: PUT %s, len %u, %s, len %u", toks[1], lens[1], toks[2], lens[2]);
-        res = cache_put(cache, TEXT_MODE, toks[1], lens[1], toks[2], lens[2]);
-			  // manejar errores de res (EINVALID, etc);
-        // se malloquea memoria para el nombre del comando toks[0] hay que liberar!
-        // hay que agregar destruccion de toks;
-        answer_text_client(fd, res);
+        char *key, *value;
+        key = dalloc(sizeof(char) * lens[1]);
+        value = dalloc(sizeof(char) * lens[2]);
+        memcpy(key, toks[1], lens[1]);
+        memcpy(value, toks[2], lens[2]);
+        res = cache_put(cache, TEXT_MODE, key, lens[1], value, lens[2]);
+        answer_text_client(fd, res, NULL, 0);
         break;
 
       case DEL:
         log(3, "text parse: DEL %s, len %u", toks[1], lens[1]);
         res = cache_del(cache, TEXT_MODE, toks[1], lens[1]);
-        answer_text_client(fd, res);
+        answer_text_client(fd, res, NULL, 0);
         break;
 
       case GET:
         log(3, "text parse: GET %s, len %u", toks[1], lens[1]);
         res = cache_get(cache, TEXT_MODE, toks[1], lens[1], &val, &vlen);
-        answer_text_client(fd, res);
+        answer_text_client(fd, res, val, vlen);
         break;
 
       case STATS:
         log(3, "text parse: STATS");
         struct Stats stats_buf = stats_init();
+        char buf[1000]; // Tamaño arbitrario, podria ser mas chico
+        int len;
         enum code res = cache_stats(cache, TEXT_MODE, &stats_buf);
-        answer_text_client(fd, res);
+        if (res == OK)
+          len = format_stats(&stats_buf, buf, 1000);
+        answer_text_client(fd, res, buf, len);
         break;
 
       case EINVALID:
         log(3, "text parse: invalid instruction");
+        answer_text_client(fd, EINVALID, NULL, 0);
         break;
 
       default:
@@ -100,50 +108,6 @@ int text_handler(int fd) {
 	return 0;
 }
 
-// enum code text_parser(char *buf, char *toks[TEXT_MAX_TOKS], int lens[TEXT_MAX_TOKS]) {
-// 	int ntok;
-//   enum code op;
-// 	log(3, "text parser(%s)", buf);
-// 	/* Separar tokens */
-// 	{
-// 		char *p = buf, *aux_buf;
-// 		ntok = 0;
-// 		aux_buf = p;
-// 		while (ntok < TEXT_MAX_TOKS - 1 && (p = strchrnul(p, ' ')) && *p) {
-// 			/* Longitud token anterior */
-//       lens[ntok] = p - aux_buf;
-//       toks[ntok] = malloc(lens[ntok]);
-// 			memmove(toks[ntok],aux_buf,lens[ntok]);
-//       ntok++;
-//       *p++ = 0; // ¿Se puede remover?
-// 			/* Comienzo nueva token */
-// 			aux_buf = p;
-// 		}
-//     lens[ntok] = p - aux_buf;
-// 		toks[ntok] = malloc(lens[ntok]);
-//     memmove(toks[ntok], aux_buf, lens[ntok]);
-//     ntok++;
-// 	}
-  
-//   printf("op %s\n",toks[0]);
-//   printf("ntok %i\n",ntok);
-//   if (ntok == 1 && !strcmp(toks[0], code_str(STATS)))
-//     op = STATS;
-//   else if (ntok == 2 && !strcmp(toks[0], code_str(GET)))
-//     op = GET;
-//   else if (ntok == 2 && !strcmp(toks[0], code_str(DEL)))
-//     op = DEL;
-//   else if (ntok == 3 && !strcmp(toks[0], code_str(PUT)))
-//     op = PUT;
-//   else
-//     op = EINVALID;
-// 	log(3, "op code: %d, ntok = %i", op, ntok);
-//   if (EINVALID)
-//     return EINVALID;
-//   for ()
-// 	return op;
-// }
-
 enum code text_parser(char *buf, char *toks[TEXT_MAX_TOKS], int lens[TEXT_MAX_TOKS]) {
   enum code op;
   const char *delim = " \t\n";
@@ -154,8 +118,10 @@ enum code text_parser(char *buf, char *toks[TEXT_MAX_TOKS], int lens[TEXT_MAX_TO
     ntoks++;
   for (int i = 1; i < TEXT_MAX_TOKS; i++) {
     toks[i] = strtok(NULL, delim);
-    if (toks[i])
-      ntoks++;
+    if (!toks[i])
+      break;
+    lens[i] = strlen(toks[i]);
+    ntoks++;
   }
 
   if (strtok(NULL, buf)) // Mas de 3 argumentos es un comando invalido
@@ -171,13 +137,22 @@ enum code text_parser(char *buf, char *toks[TEXT_MAX_TOKS], int lens[TEXT_MAX_TO
   else
     op = EINVALID;
 	log(3, "op code: %d, ntoks = %i", op, ntoks);
-  if (op != EINVALID && op != STATS) {
-    for (int i = 1; i < ntoks; i++) {
-      lens[i] = strlen(toks[i]);
-      char* tmp = malloc(lens[i]);
-      memcpy(tmp, toks[i], lens[i]);
-      toks[i] = tmp;
-    }
-  }
 	return op;
+}
+
+int answer_text_client(int fd, enum code res, char *data, uint64_t len) {
+  log(2, "Respuesta op: %d a %d", res, fd);
+  char c; 
+  const char *op_string = code_str(res);
+  if (write(fd, op_string, strlen(op_string)) < 0)
+    return -1;
+  if (data) {
+    c = ' ';
+    write(fd, &c, 1);
+    if (write(fd, data, len) < 0)
+      return -1;
+  }
+  c = '\n';
+  write(fd, &c, 1);
+  return 0;
 }

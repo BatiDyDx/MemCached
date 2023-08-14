@@ -21,6 +21,4 @@ struct eventloop_data {
 	int n_proc;
 };
 
-int answer_text_client(int fd, enum code res);
-
 #endif

@@ -71,12 +71,31 @@ void cache_destroy(Cache cache) {
   free(cache);
 }
 
+void cache_update_stats(Cache cache, char mode, void (*update)(struct Stats*)) {
+  pthread_mutex_t *lock;
+  struct Stats *stats;
+  if (mode == TEXT_MODE) {
+    lock = &cache->ts_lock;
+    stats = &cache->text_stats;
+  } else if (mode == BIN_MODE) {
+    lock = &cache->bs_lock;
+    stats = &cache->bin_stats;
+  } else
+    assert(0);
+  pthread_mutex_lock(lock);
+  update(stats);
+  pthread_mutex_unlock(lock);
+}
+
 enum code cache_get(Cache cache, char mode, char* key, unsigned klen, char **val, unsigned *vlen) {
+  cache_update_stats(cache, mode, stats_inc_get);
   unsigned idx = NROW(key, klen);
   RD_LOCK_ROW(idx);
   List node = list_search(cache->buckets[idx], mode, key, klen);
   if (!node) {
     UNLOCK_ROW(idx);
+    *val = NULL;
+    *vlen = 0;
     return ENOTFOUND;
   }
   Data data = list_get_data(node);
@@ -90,8 +109,7 @@ enum code cache_get(Cache cache, char mode, char* key, unsigned klen, char **val
 }
 
 enum code cache_put(Cache cache, char mode, char* key, unsigned klen, char *value, unsigned vlen) {
-  printf("key (put) %s\n",key);
-  printf("klen (put) %u \n",klen);
+  cache_update_stats(cache, mode, stats_inc_put);
   unsigned idx = NROW(key, klen);
   WR_LOCK_ROW(idx);
   List node = list_search(cache->buckets[idx], mode, key, klen);
@@ -102,6 +120,7 @@ enum code cache_put(Cache cache, char mode, char* key, unsigned klen, char *valu
     LRUNode lru_priority = lru_push(cache->queue, idx, new_node);
     // aca habria que lockear la row y hicimos el unlock antes
     list_set_lru_priority(new_node, lru_priority);
+    cache_update_stats(cache, mode, stats_inc_keys);
   } else {
     Data data = list_get_data(node);
     free(data.val);
@@ -116,6 +135,7 @@ enum code cache_put(Cache cache, char mode, char* key, unsigned klen, char *valu
 }
 
 enum code cache_del(Cache cache, char mode, char* key, unsigned klen) {
+  cache_update_stats(cache, mode, stats_inc_del);
   unsigned idx = NROW(key, klen);
   WR_LOCK_ROW(idx);
   List list = cache->buckets[idx];
@@ -129,6 +149,7 @@ enum code cache_del(Cache cache, char mode, char* key, unsigned klen) {
     UNLOCK_ROW(idx);
     lru_free_node(lru_priority);
     list_free_node(del_node);
+    cache_update_stats(cache, mode, stats_dec_keys);
   }
   return OK;
 }

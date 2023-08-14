@@ -91,24 +91,6 @@ void worker_thread(void) {
   }
 }
 
-int answer_text_client(int fd, enum code res) {
-  log(2, "Respuesta op: %d a %d", res, fd);
-  switch (res) {
-    case OK:
-      write(fd, "OK\n", 3); // Falta implementar respuesta con valor
-      break;
-    case EINVALID:
-      write(fd, "EINVALID\n", 9);
-      break;
-    case ENOTFOUND:
-      write(fd, "ENOTFOUND\n", 10);
-      break;
-    default:
-      assert(0);
-  }
-  return 0;
-}
-
 void server(int text_sock, int bin_sock, unsigned nthreads) {
   int epfd;
   struct epoll_event event;

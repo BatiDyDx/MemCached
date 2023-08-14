@@ -10,6 +10,16 @@ struct Stats {
 //! @brief Crea una estructura de estadisticas
 struct Stats stats_init();
 
+void stats_inc_get(struct Stats *s);
+
+void stats_inc_put(struct Stats *s);
+
+void stats_inc_del(struct Stats *s);
+
+void stats_inc_keys(struct Stats *s);
+
+void stats_dec_keys(struct Stats *s);
+
 //! @brief Retorna una cadena con un formato estandar para estadisticas
 int format_stats(struct Stats *s, char buf[], unsigned n);
 
