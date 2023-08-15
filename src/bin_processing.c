@@ -32,20 +32,21 @@ int bin_handler(int fd) {
 		int lens[2];
 		int ntoks;
 		enum code res;
+    (void) res;
     (void) ntoks;
 		switch (op){
 		case PUT:
 			ntoks = bin_parser(fd, toks, lens, 2); // consumiremos 2 argumentos
 			log(3, "binary parse: PUT %s %s", toks[0], toks[1]);
 			res = cache_put(cache, BIN_MODE,  toks[0], lens[0], toks[1], lens[1]);
-      answer_text_client(fd, res);
+      //answer_text_client(fd, res);
 			break;
 		
 		case DEL: 
 			ntoks = bin_parser(fd, toks, lens, 1); // cosumiremos 1 argumento
 			log(3, "binary parse: DEL %s %d", toks[0], lens[0]);
 			res = cache_del(cache, BIN_MODE, toks[0], lens[0]); 
-      answer_text_client(fd, res);
+      //answer_text_client(fd, res);
 			break;
 		
 		case GET:
@@ -54,14 +55,14 @@ int bin_handler(int fd) {
 			char* val;
 			unsigned vlen;
 			res = cache_get(cache, BIN_MODE, toks[0], lens[0], &val, &vlen);
-      answer_text_client(fd, res);
+      //answer_text_client(fd, res);
 			break;
 
 		case STATS:
 			log(3, "binary parse: STATS");
 			struct Stats stats_buf;
-			enum code res = cache_stats(cache, BIN_MODE, &stats_buf);
-      answer_text_client(fd, res);
+			res = cache_stats(cache, BIN_MODE, &stats_buf);
+      //answer_text_client(fd, res);
 			break;
     }
 		break;

@@ -86,7 +86,11 @@ void worker_thread(void) {
         status = bin_handler(csock);
       else
         assert(0);
-      (void) status; // Determinar si se cierra la conexion
+      if (status < 0) { // Determinar si se cierra la conexion
+        close(csock);
+        epoll_ctl(eventloop.epfd, EPOLL_CTL_DEL, csock, NULL);
+        log(1, "Cierre de conexion con el fd: %d", csock);
+      }
     }
   }
 }
