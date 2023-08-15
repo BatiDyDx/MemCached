@@ -14,5 +14,5 @@ int bin_handler(int fd);
 //! @param[in] ntoks - cantidad de tokens.
 int bin_parser(int fd, char *toks[], int *lens , int ntoks);
 
-
+int answer_bin_client(int fd, enum code res, char *data, uint32_t len);
 #endif

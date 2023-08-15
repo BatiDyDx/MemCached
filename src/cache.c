@@ -115,10 +115,8 @@ enum code cache_put(Cache cache, char mode, char* key, unsigned klen, char *valu
   List node = list_search(cache->buckets[idx], mode, key, klen);
   if (!node) {
     Data new_data = data_wrap(key, klen, value, vlen, mode);
-    // unlock row hasta conseguir prioridad?
     List new_node = list_insert(cache->buckets[idx], new_data);
     LRUNode lru_priority = lru_push(cache->queue, idx, new_node);
-    // aca habria que lockear la row y hicimos el unlock antes
     list_set_lru_priority(new_node, lru_priority);
     cache_update_stats(cache, mode, stats_inc_keys);
   } else {

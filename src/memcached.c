@@ -38,7 +38,8 @@ void limit_mem(rlim_t lim) {
 void handle_interrupt(int sig) {
   log(2, "Señal %d atrapada", sig);
   close(eventloop.epfd);
-  close(eventloop.text_sock);
+  close(eventloop.
+  text_sock);
   close(eventloop.bin_sock);
   cache_destroy(cache);
   exit(EXIT_SUCCESS);

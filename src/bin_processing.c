@@ -8,6 +8,7 @@
 #include "common.h"
 #include "io.h"
 #include "log.h"
+#include "dalloc.h"
 #include "stats.h"
 #include "memcached.h"
 #include "bin_processing.h"
@@ -39,14 +40,14 @@ int bin_handler(int fd) {
 			ntoks = bin_parser(fd, toks, lens, 2); // consumiremos 2 argumentos
 			log(3, "binary parse: PUT %s %s", toks[0], toks[1]);
 			res = cache_put(cache, BIN_MODE,  toks[0], lens[0], toks[1], lens[1]);
-      //answer_text_client(fd, res);
+      		answer_bin_client(fd, res, NULL, 0);
 			break;
 		
 		case DEL: 
 			ntoks = bin_parser(fd, toks, lens, 1); // cosumiremos 1 argumento
 			log(3, "binary parse: DEL %s %d", toks[0], lens[0]);
 			res = cache_del(cache, BIN_MODE, toks[0], lens[0]); 
-      //answer_text_client(fd, res);
+      		answer_bin_client(fd, res, NULL, 0);
 			break;
 		
 		case GET:
@@ -55,16 +56,20 @@ int bin_handler(int fd) {
 			char* val;
 			unsigned vlen;
 			res = cache_get(cache, BIN_MODE, toks[0], lens[0], &val, &vlen);
-      //answer_text_client(fd, res);
+      		answer_bin_client(fd, res, val, vlen);
 			break;
 
 		case STATS:
 			log(3, "binary parse: STATS");
+			char buf[1000];
 			struct Stats stats_buf;
+			int len;
 			res = cache_stats(cache, BIN_MODE, &stats_buf);
-      //answer_text_client(fd, res);
+			if (res == OK)
+          		len = format_stats(&stats_buf, buf, 1000);
+        	answer_bin_client(fd, res, buf, len);
 			break;
-    }
+    	}
 		break;
 	}
 	return 0;
@@ -73,11 +78,25 @@ int bin_handler(int fd) {
 int bin_parser(int fd, char *toks[], int *lens , int ntoks) {
 	int len;
 	for (int i = 0; i < ntoks; i++) {
-		read(fd, &len, 4); // se lee la longitud del argumento
+		if(read(fd, &len, 4) < 0); // se lee la longitud del argumento
     len = ntohl(len);
-	  toks[i] = malloc(len);
-		read(fd, toks[i],len); // se lee el argumento 
+	  if (!(toks[i] = dalloc(len)))
+			return -1;
+		read(fd, toks[i],len);// se lee el argumento 
     lens[i] = len;
 	}
 	return ntoks;
+}
+
+int answer_bin_client(int fd, enum code res, char *data, uint32_t len) {
+  log(2, "Respuesta op: %d a %d", res, fd);
+  if (write(fd, &res, 1) < 0)
+    return -1;
+  if (data) {
+	uint32_t len_aux = htonl(len);
+    write(fd, &len_aux, 4);
+    if (write(fd, data, len) < 0)
+      return -1;			
+  }
+  return 0;
 }
