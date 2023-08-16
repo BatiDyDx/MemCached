@@ -15,9 +15,9 @@ int main(int argc, char** argv){
   if (uid == 0) {  
     // se ejecuto desde root
     // conexion con privilegios
-    txt_port = 888;
+    txt_port = 8888;
 
-    bin_port = 889;
+    bin_port = 8889;
 
   } else {
     // conexion sin privilegios

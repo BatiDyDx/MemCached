@@ -69,8 +69,14 @@ void worker_thread(void) {
       quit("wait en epoll");
     // Aceptar conexiones
     if (event.data.fd == eventloop.text_sock || event.data.fd == eventloop.bin_sock) {
-      mode = event.data.fd == eventloop.text_sock ? TEXT_MODE : BIN_MODE;
-      csock = accept(eventloop.text_sock, NULL, 0);
+      if(event.data.fd == eventloop.text_sock){
+        mode = TEXT_MODE;
+        csock = accept(eventloop.text_sock, NULL, 0);
+      }
+      else{
+        mode = BIN_MODE;
+        csock = accept(eventloop.bin_sock, NULL, 0);
+      }
       log(2, "accept fd: %d modo: %d", csock, mode);
       if (csock < 0)
         quit("accept de nueva conexion");
@@ -156,7 +162,7 @@ int main(int argc, char **argv) {
   struct Config config;
 
   memcache_config(argc, argv, &config);
-  handle_signals();
+  //handle_signals();
 
   /* Función que limita la memoria */
   limit_mem(config.memsize);
