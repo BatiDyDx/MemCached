@@ -15,13 +15,14 @@
 #include "bin_processing.h"
 #include "cache.h"
 #include "io.h"
+#include "sock.h"
 
 Cache cache;
 
 struct Config {
   unsigned nthreads;
   rlim_t memsize;
-  int text_sock, bin_sock;
+  unsigned cache_cells, cache_regions;
 };
 
 struct eventloop_data eventloop;
@@ -138,8 +139,10 @@ int memcache_config(int argc, char** argv, struct Config *config) {
   int opt;
   config->nthreads = sysconf(_SC_NPROCESSORS_ONLN);
   config->memsize  = MEM_LIMIT;
+  config->cache_cells = HASH_CELLS;
+  config->cache_regions = HASH_REGIONS;
 
-  while ((opt = getopt(argc, argv, "n:m:")) != -1) {
+  while ((opt = getopt(argc, argv, "n:m:r:c:")) != -1) {
     switch (opt) {
       case 'm':
         config->memsize = atoi(optarg);
@@ -147,30 +150,35 @@ int memcache_config(int argc, char** argv, struct Config *config) {
       case 'n':
         config->nthreads = atoi(optarg);
         break;
+      case 'r':
+        config->cache_regions = atoi(optarg);
+        break;
+      case 'c':
+        config->cache_cells = atoi(optarg);
+        break;
       default:
         printf("Uso del programa\n");
     }
   }
 
-  config->text_sock = atoi(argv[optind]);   // Tenemos garantizado que el caller pasa bien los argumentos
-  config->bin_sock  = atoi(argv[optind + 1]);
-
   return 0;
 }
 
 int main(int argc, char **argv) {
+  int text_sock, bin_sock;
   struct Config config;
 
   memcache_config(argc, argv, &config);
-  //handle_signals();
+  handle_signals();
+  make_bindings(&text_sock, &bin_sock);
 
   /* Función que limita la memoria */
   limit_mem(config.memsize);
 
-  cache = cache_init(HASH_CELLS, NREGIONS);
+  cache = cache_init(config.cache_cells, config.cache_regions);
 
   /*Iniciar el servidor*/
-  server(config.text_sock, config.bin_sock, config.nthreads);
+  server(text_sock, bin_sock, config.nthreads);
 
   return 0;
 }

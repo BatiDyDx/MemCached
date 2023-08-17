@@ -46,12 +46,12 @@ Cache cache_init(uint64_t size, uint64_t nregions) {
   cache->nregions   = nregions;
   cache->size       = size;
   if (pthread_mutex_init(&cache->ts_lock, NULL) < 0)
-    perror("Inicializado lock para estadisticas de texto");
+    quit("Inicializado lock para estadisticas de texto");
   if (pthread_mutex_init(&cache->bs_lock, NULL) < 0)
-    perror("Inicializado lock para estadisticas binarias");
+    quit("Inicializado lock para estadisticas binarias");
   for (uint32_t i = 0; i < nregions; i++)
     if (pthread_rwlock_init(cache->row_locks + i, NULL) < 0)
-      perror("Inicializado de lock para region de cache");
+      quit("Inicializado de lock para region de cache");
   for (uint32_t i = 0; i < size; i++)
     cache->buckets[i] = list_init();
   log(2, "Inicializado de cache con %lu casillas y %lu regiones", size, nregions);

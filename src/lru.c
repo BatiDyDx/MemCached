@@ -24,12 +24,12 @@ void lru_free_node(LRUNode node) {
 
 static inline void lru_lock(LRUQueue q) {
   if (pthread_mutex_lock(&q->lock) < 0)
-    perror("lru_lock");
+    quit("lru_lock");
 }
 
 static inline void lru_unlock(LRUQueue q) {
   if (pthread_mutex_unlock(&q->lock) < 0)
-    perror("lru_unlock");
+    quit("lru_unlock");
 }
 
 LRUQueue lru_init() {

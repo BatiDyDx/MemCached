@@ -9,6 +9,7 @@ server
 *.d
 
 # Object files
+*.beam
 *.o
 *.ko
 *.obj

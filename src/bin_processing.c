@@ -76,14 +76,12 @@ int bin_handler(int fd) {
 }
 
 int bin_parser(int fd, char *toks[], int *lens , int ntoks) {
-	int len;
 	for (int i = 0; i < ntoks; i++) {
-		if(read(fd, &len, 4) < 0); // se lee la longitud del argumento
-    len = ntohl(len);
-	  if (!(toks[i] = dalloc(len)))
+		read(fd, lens + i, 4); // se lee la longitud del argumento
+    	lens[i] = ntohl(lens[i]);
+	  	if (!(toks[i] = dalloc(lens[i])))
 			return -1;
-		read(fd, toks[i],len);// se lee el argumento 
-    lens[i] = len;
+		read(fd, toks[i], lens[i]);// se lee el argumento 
 	}
 	return ntoks;
 }
