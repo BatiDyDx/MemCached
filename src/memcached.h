@@ -8,7 +8,7 @@
 #define HASH_CELLS 1000000 // Cantidad de celdas en la cache
 #define HASH_REGIONS 500 // Cantidad de regiones en que se divide la cache
 
-#define TEXT_BUF_SIZE 2048
+#define TEXT_LIMIT_SIZE 2048
 #define BIN_BUF_SIZE
 
 extern Cache cache;
@@ -16,9 +16,7 @@ extern Cache cache;
 //! @struct - Estructura para almacenar informacion
 struct eventloop_data {
 	int epfd; // file descriptor para epoll
-	int id;
   int text_sock, bin_sock;
-	int n_proc;
 };
 
 #endif

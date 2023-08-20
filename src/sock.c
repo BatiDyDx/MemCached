@@ -3,6 +3,9 @@
 #include <netinet/ip.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <sys/epoll.h>
+#include <errno.h>
+#include "memcached.h"
 #include "sock.h"
 #include "log.h"
 #include "common.h"
@@ -12,8 +15,8 @@ int mk_tcp_sock(in_port_t port) {
 	struct sockaddr_in sa;
 	int yes = 1;
 
-	// Socket de conexion por red, con protocolo TCP
-	s = socket(AF_INET, SOCK_STREAM, 0);
+	// Socket de conexion por red, con protocolo TCP, lo seteamos como no bloqueante
+	s = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
 	if (s < 0)
 		quit("Creación de socket de escucha");
 
@@ -68,4 +71,23 @@ void make_bindings(int *text_sock, int *bin_sock) {
 		if (setuid(atoi(suid)) != 0)
 			quit("setuid");
 	}
+}
+
+// Acepta clientes encolados. Esto es necesario ya que los sockets de escucha
+// son tratados por epoll en modo edge-triggered.
+// TODO Puede no ser necesario este modo de uso para sockets de escucha, en ese
+// caso no seria necesario (aunque tampoco incorrecto) este procedimiento
+int accept_clients(struct eventloop_data eventloop, char mode) {
+  int csock;
+  struct epoll_event event;
+  int lsock = mode == TEXT_MODE ? eventloop.text_sock : eventloop.bin_sock;
+  while ((csock = accept(lsock, NULL, 0)) >= 0) {
+    log(2, "accept fd: %d en modo: %d", csock, mode);
+    event.events = EPOLLIN | EPOLLEXCLUSIVE | EPOLLET;
+    event.data.u64 = ((uint64_t) mode) << 32 | ((uint64_t) csock);
+    epoll_ctl(eventloop.epfd, EPOLL_CTL_ADD, csock, &event);
+  }
+  if(errno == EAGAIN || errno == EWOULDBLOCK)
+    return 0;
+  return -1;
 }

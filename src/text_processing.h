@@ -2,7 +2,7 @@
 #define __TEXT_PROC_H__
 
 #define TEXT_MAX_TOKS 3
-#define TEXT_BUF_SIZE 2048
+#define TEXT_LIMIT_SIZE 2048
 
 //! @brief Función de manejo de entrada en modo texto.
 int text_handler(int fd);

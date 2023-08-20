@@ -17,6 +17,10 @@
 #include "io.h"
 #include "sock.h"
 
+// Codificamos modo y fd en enteros de 64 bits
+#define GET_FD(n) ((int) n)
+#define GET_MODE(n) ((int) (n >> 32))
+
 Cache cache;
 
 struct Config {
@@ -60,68 +64,59 @@ void handle_signals() {
   log(3, "Configuracion de handlers de señales");
 }
 
+void handle_client(struct eventloop_data eventloop, int csock, char mode) {
+  int status;
+  log(2, "handle fd: %d modo: %d", csock, mode);
+  if (mode == TEXT_MODE)
+    status = text_handler(csock);
+  else if (mode == BIN_MODE)
+    status = bin_handler(csock);
+  else
+    assert(0);
+  if (status < 0) { // Determinar si se cierra la conexion
+    close(csock);
+    epoll_ctl(eventloop.epfd, EPOLL_CTL_DEL, csock, NULL);
+    log(1, "Cierre de conexion con el fd: %d", csock);
+  }
+}
+
 void worker_thread(void) {
-  int fdc;
+  int fdc, sock;
   struct epoll_event event;
   while (1) {
-    int csock, mode;
     fdc = epoll_wait(eventloop.epfd, &event, 1, -1);
     if (fdc < 0)
       quit("wait en epoll");
+    sock = GET_FD(event.data.u64);
     // Aceptar conexiones
-    if (event.data.fd == eventloop.text_sock || event.data.fd == eventloop.bin_sock) {
-      if(event.data.fd == eventloop.text_sock){
-        mode = TEXT_MODE;
-        csock = accept(eventloop.text_sock, NULL, 0);
-      }
-      else{
-        mode = BIN_MODE;
-        csock = accept(eventloop.bin_sock, NULL, 0);
-      }
-      log(2, "accept fd: %d modo: %d", csock, mode);
-      if (csock < 0)
-        quit("accept de nueva conexion");
-      event.data.u64 = ((uint64_t) mode) << 32 | ((uint64_t) csock);
-      epoll_ctl(eventloop.epfd, EPOLL_CTL_ADD, csock, &event);
-    } else { // Atender peticion
-      int status;
-      csock = event.data.u64 & 0xFFFFFFFF;
-      mode  = (event.data.u64  >> 32) & 0xFFFFFFFF;
-      log(2, "handle fd: %d modo: %d", csock, mode);
-      if (mode == TEXT_MODE)
-        status = text_handler(csock);
-      else if (mode == BIN_MODE)
-        status = bin_handler(csock);
-      else
-        assert(0);
-      if (status < 0) { // Determinar si se cierra la conexion
-        close(csock);
-        epoll_ctl(eventloop.epfd, EPOLL_CTL_DEL, csock, NULL);
-        log(1, "Cierre de conexion con el fd: %d", csock);
-      }
-    }
+    if (sock == eventloop.text_sock)
+      accept_clients(eventloop, TEXT_MODE);
+    else if (sock == eventloop.bin_sock)
+      accept_clients(eventloop, BIN_MODE);
+    else // Atender peticion
+      handle_client(eventloop, sock, GET_MODE(event.data.u64));
   }
 }
 
 void server(int text_sock, int bin_sock, unsigned nthreads) {
   int epfd;
   struct epoll_event event;
-  pthread_t threads[nthreads]; // TODO Quizas hace falta almacenar info sobre hilos
+  pthread_t threads[nthreads];
 
-  eventloop.n_proc = nthreads;
-  eventloop.id = 0; // TODO Averiguar para que sirve
   if ((epfd = epoll_create1(0)) < 0)
     quit("Inicializado de epoll");
-  eventloop.epfd = epfd;
-  event.events = EPOLLIN | EPOLLEXCLUSIVE;
 
+  eventloop.epfd = epfd;
   eventloop.text_sock = text_sock;
+  eventloop.bin_sock = bin_sock;
+  
   event.data.fd = text_sock;
+  event.events = EPOLLIN | EPOLLEXCLUSIVE;
   if (epoll_ctl(epfd, EPOLL_CTL_ADD, text_sock, &event) < 0)
     quit("Escucha de epoll en socket de conexion modo texto");
 
-  eventloop.bin_sock = bin_sock;
   event.data.fd = bin_sock;
+  event.events = EPOLLIN | EPOLLEXCLUSIVE;
   if (epoll_ctl(epfd, EPOLL_CTL_ADD,  bin_sock, &event) < 0)
     quit("Escucha de epoll en socket de conexion modo binario");
 

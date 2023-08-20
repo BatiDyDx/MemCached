@@ -21,4 +21,6 @@ int mk_tcp_sock(in_port_t port);
 //! @param[out] bin_sock  - Almacena el socket de escucha de modo binario
 void make_bindings(int *text_sock, int *bin_sock);
 
+int accept_clients(struct eventloop_data eventloop, char mode);
+
 #endif
