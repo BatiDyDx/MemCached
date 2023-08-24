@@ -26,15 +26,20 @@ worker_thread(Socket) ->
     % -------------------- PASIVO ---------------------
     receive
         {send, Cmd} -> case gen_tcp:send(Socket, Cmd) of
-                            ok -> get_ans(Socket, false);
+                            ok -> recv_ans(Socket);
                             {error, Reason} -> io:fwrite("Error: ~s~n", [Reason])
                         end,
                         worker_thread(Socket);
         {send_stats, Cmd} -> case gen_tcp:send(Socket, Cmd) of
-                                ok -> get_ans(Socket, true);
+                                ok -> rcv_ans_data(Socket),                                        
+                                {error, Reason} -> io:fwrite("Error: ~s~n", [Reason])
+                            end;
+        {send_get, Cmd} -> case gen_tcp:send(Socket, Cmd) of
+                                ok -> rcv_ans_data(Socket);
                                 {error, Reason} -> io:fwrite("Error: ~s~n", [Reason])
                             end;
         {tcp_closed, _} -> close_conn(Socket);
+
         exit -> close_conn(Socket)
     end.
     % ------------------ ACTIVO -----------------
@@ -55,14 +60,16 @@ close_conn(Socket) ->
     io:fwrite("Conexión terminada"),
     gen_tcp:close(Socket).
 
-get_ans(Socket, Stats) ->
-    case gen_tcp:recv(Socket,0) of
-    {ok, Data} ->
-        parse_data(Data, Stats);
-    {error, closed} ->
-        close_conn(Socket)
-    end,
-    worker_thread(Socket).
+rcv_ans_data(Socket) ->
+    case recv_ans(Socket) of
+        ok-> 
+            case gen_tcp:recv(Socket,4) of:
+                {ok, Data} -> 
+                    
+                {error, Reason} -> 
+        _ -> 
+            worker_thread(Socket) 
+    end.
 
 put(Id, Key, Value) ->
     Bkey = term_to_binary(Key),
@@ -91,35 +98,29 @@ stats(Id) ->
 exit(Id) ->
     Id ! exit.
 
-parse_data(Data, Stats) ->
+recv_ans(Socket) ->
+    
     Nbyte = byte_size(Data),
     io:fwrite("byte data ~p~n",[Nbyte]),
-    case Data of 
-        <<101,_:32,Rest/binary>> ->
-            case Rest of
-                <<>> -> io:fwrite("ok vacio~n");
-                _ -> if 
-                       Stats -> SVal = Rest;
-                       true -> SVal = binary_to_term(Rest)
-                     end,
-                     io:fwrite("OK ~p~n",[SVal])
+    case gen_tcp:rcv(Socket,1) of
+        {ok,Data} -> 
+            case Data of
+                <<101>> ->
+                    ok
+                <<111>> ->
+                    einvalid;
+                <<112>> ->
+                    enotfound;
+                <<113>> ->
+                    ebinary;
+                <<114>> ->
+                    ebig;
+                <<115>> ->
+                    eunk;
+                <<116>> ->
+                    eoom;
+                _ ->
+                    error
             end;
-        <<101,_:32,Stats>> ->
-            io:fwrite("OK ~s~n",[Stats]);
-        <<101>> ->
-            io:fwrite("OK~n");
-        <<111>> ->
-            io:fwrite("EINVALID~n");
-        <<112>> ->
-            io:fwrite("ENOTFOUND~n");
-        <<113>> ->
-            io:fwrite("EBINARY~n");
-        <<114>> ->
-            io:fwrite("EBIG~n");
-        <<115>> ->
-            io:fwrite("EUNK~n");
-        <<116>> ->
-            io:fwrite("EOOM~n");
-        _ ->
-            io:fwrite("MESSAGE ERROR~n")
+        {error, Reason} -> io:fwrite("Error: ~s~n", [Reason])
     end.
