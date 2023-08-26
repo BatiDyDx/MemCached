@@ -10,19 +10,18 @@
 #include "text_processing.h"
 #include "io.h"
 #include "cache.h"
+#include "client_data.h"
 #include "log.h"
 #include "dalloc.h"
 #include "stats.h"
 
-static inline min(int x, int y) {
+static inline int min(int x, int y) {
   return x <= y ? x : y;
 }
 
 /* 0: todo ok, continua. -1 errores */
 int text_handler(struct ClientData *cdata) {
   long nread;
-  char buf[TEXT_LIMIT_SIZE];
-  enum IO_STATUS_CODE err;
   char *ebyte; // end byte
   char *toks[3];
   int lens[3];
@@ -38,10 +37,10 @@ int text_handler(struct ClientData *cdata) {
     return 0;
   } else {
     *ebyte = '\0';
-    log(3, "Comando completo: <%s>", buf);
-    op = text_parser(buf,toks,lens);
+    log(3, "Comando completo: <%s>", cdata->buffer);
+    op = text_parser(cdata->buffer, toks, lens);
   }
-
+  fd_flush(cdata->client_fd); // El restante no lo queremos
   switch (op) {
     case PUT:
       char *key, *value;
@@ -87,7 +86,7 @@ int text_handler(struct ClientData *cdata) {
       assert(0);
       break;
   }
-  return 0;
+  return 1;
 }
 
 enum code text_parser(char *buf, char *toks[TEXT_MAX_TOKS], int lens[TEXT_MAX_TOKS]) {

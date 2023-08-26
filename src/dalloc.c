@@ -1,3 +1,4 @@
+#include <string.h>
 #include "dalloc.h"
 #include "memcached.h"
 
@@ -8,4 +9,11 @@ void* dalloc(size_t size) {
     ptr = malloc(size);
   }
   return ptr;
+}
+
+void* drealloc(void* ptr, size_t size, size_t inc) {
+  void* realloc_ptr = dalloc(size + inc);
+  memmove(realloc_ptr, ptr, size);
+  free(ptr);
+  return realloc_ptr;
 }

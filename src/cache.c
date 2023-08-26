@@ -7,6 +7,7 @@
 #include "stats.h"
 #include "cache.h"
 #include "ll.h"
+#include "dalloc.h"
 
 struct _Cache {
   List *buckets;

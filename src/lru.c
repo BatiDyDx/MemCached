@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <pthread.h>
 #include "cache.h"
+#include "dalloc.h"
 #include "lru.h"
 #include "ll.h"
 
