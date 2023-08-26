@@ -9,6 +9,7 @@
 #include "sock.h"
 #include "log.h"
 #include "common.h"
+#include "io.h"
 
 int mk_tcp_sock(in_port_t port) {
 	int s, rc;
@@ -83,8 +84,12 @@ int accept_clients(struct eventloop_data eventloop, char mode) {
   int lsock = mode == TEXT_MODE ? eventloop.text_sock : eventloop.bin_sock;
   while ((csock = accept(lsock, NULL, 0)) >= 0) {
     log(2, "accept fd: %d en modo: %d", csock, mode);
+	struct ClientData* cdata = dalloc(sizeof(struct ClientData));
+	cdata->buffer = dalloc(sizeof(CLIENT_BUF_SIZE));
+	cdata->client_fd = csock;
+	cdata->mode = mode;
     event.events = EPOLLIN | EPOLLEXCLUSIVE | EPOLLET;
-    event.data.u64 = ((uint64_t) mode) << 32 | ((uint64_t) csock);
+    event.data.ptr = cdata;
     epoll_ctl(eventloop.epfd, EPOLL_CTL_ADD, csock, &event);
   }
   if(errno == EAGAIN || errno == EWOULDBLOCK)
