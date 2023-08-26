@@ -18,8 +18,8 @@
 #include "sock.h"
 
 // Codificamos modo y fd en enteros de 64 bits
-#define GET_FD(n) ((int) n)
-#define GET_MODE(n) ((int) (n >> 32))
+#define GET_FD(data) ((int) data->client_fd)
+#define GET_MODE(data) ((int) data->mode)
 
 Cache cache;
 
@@ -64,19 +64,21 @@ void handle_signals() {
   log(3, "Configuracion de handlers de señales");
 }
 
-void handle_client(struct eventloop_data eventloop, int csock, char mode) {
+void handle_client(struct eventloop_data eventloop, struct ClientData* cdata) {
   int status;
-  log(2, "handle fd: %d modo: %d", csock, mode);
-  if (mode == TEXT_MODE)
-    status = text_handler(csock);
-  else if (mode == BIN_MODE)
-    status = bin_handler(csock);
+  log(2, "handle fd: %d modo: %d", cdata->client_fd, cdata->mode);
+  if (cdata->mode == TEXT_MODE)
+    status = text_handler(cdata);
+  else if (cdata->mode == BIN_MODE)
+    status = bin_handler(cdata);
   else
     assert(0);
   if (status < 0) { // Determinar si se cierra la conexion
-    close(csock);
-    epoll_ctl(eventloop.epfd, EPOLL_CTL_DEL, csock, NULL);
-    log(1, "Cierre de conexion con el fd: %d", csock);
+    close(cdata->client_fd);
+    epoll_ctl(eventloop.epfd, EPOLL_CTL_DEL, cdata->client_fd, NULL);
+    log(1, "Cierre de conexion con el fd: %d", cdata->client_fd);
+    free(cdata->buffer);
+    free(cdata);
   }
 }
 
@@ -87,14 +89,15 @@ void worker_thread(void) {
     fdc = epoll_wait(eventloop.epfd, &event, 1, -1);
     if (fdc < 0)
       quit("wait en epoll");
-    sock = GET_FD(event.data.u64);
+    struct ClientData *cdata = event.data.ptr;
+    sock = cdata->client_fd;
     // Aceptar conexiones
     if (sock == eventloop.text_sock)
       accept_clients(eventloop, TEXT_MODE);
     else if (sock == eventloop.bin_sock)
       accept_clients(eventloop, BIN_MODE);
     else // Atender peticion
-      handle_client(eventloop, sock, GET_MODE(event.data.u64));
+      handle_client(eventloop, cdata);
   }
 }
 
