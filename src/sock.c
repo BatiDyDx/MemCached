@@ -84,11 +84,11 @@ int accept_clients(struct eventloop_data eventloop, char mode) {
   int lsock = mode == TEXT_MODE ? eventloop.text_sock : eventloop.bin_sock;
   while ((csock = accept(lsock, NULL, 0)) >= 0) {
     log(2, "accept fd: %d en modo: %d", csock, mode);
-	struct ClientData* cdata = dalloc(sizeof(struct ClientData));
-	cdata->buffer = dalloc(sizeof(CLIENT_BUF_SIZE));
-	cdata->client_fd = csock;
-	cdata->mode = mode;
-    event.events = EPOLLIN | EPOLLEXCLUSIVE | EPOLLET;
+    struct ClientData* cdata = dalloc(sizeof(struct ClientData));
+    cdata->buffer = dalloc(sizeof(CLIENT_BUF_SIZE));
+    cdata->client_fd = csock;
+    cdata->mode = mode;
+    event.events = EPOLLIN | EPOLLEXCLUSIVE | EPOLLET | EPOLLONESHOT;
     event.data.ptr = cdata;
     epoll_ctl(eventloop.epfd, EPOLL_CTL_ADD, csock, &event);
   }

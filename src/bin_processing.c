@@ -15,7 +15,7 @@
 
 
 /* 0: todo ok, continua. -1 errores */
-int bin_handler(int fd) {
+int bin_handler(struct ClientData* cdata) {
   long nread;
   char op;  
   enum IO_STATUS_CODE err;

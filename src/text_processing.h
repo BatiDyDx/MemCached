@@ -14,6 +14,6 @@ int text_handler(int fd);
 //! @param[out] lens - arreglo de enteros, contiene la longitud de los tokens
 enum code text_parser(char *buf, char *toks[TEXT_MAX_TOKS], int lens[TEXT_MAX_TOKS]);
 
-int answer_text_client(int fd, enum code res, char *data, uint64_t len);
+int answer_text_client(struct ClientData *cdata);
 
 #endif      

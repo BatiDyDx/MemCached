@@ -23,13 +23,11 @@ void lru_free_node(LRUNode node) {
 }
 
 static inline void lru_lock(LRUQueue q) {
-  if (pthread_mutex_lock(&q->lock) < 0)
-    quit("lru_lock");
+  pthread_mutex_lock(&q->lock);
 }
 
 static inline void lru_unlock(LRUQueue q) {
-  if (pthread_mutex_unlock(&q->lock) < 0)
-    quit("lru_unlock");
+  pthread_mutex_unlock(&q->lock);
 }
 
 LRUQueue lru_init() {
@@ -39,7 +37,7 @@ LRUQueue lru_init() {
   pthread_mutexattr_t attr;
   pthread_mutexattr_init(&attr);
   pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
-  pthread_mutex_init(&q->lock, &attr);
+  assert(pthread_mutex_init(&q->lock, &attr) == 0);
   pthread_mutexattr_destroy(&attr);
   return q;
 }
@@ -64,8 +62,9 @@ int lru_empty(LRUQueue q) {
 }
 
 LRUNode lru_push(LRUQueue q, unsigned idx, List data_node) {
-  LRUNode new_node = malloc(sizeof(struct _LRUNode));
-  assert(new_node);
+  LRUNode new_node = dalloc(sizeof(struct _LRUNode));
+  if (!new_node)
+    return NULL;
   new_node->idx = idx;
   new_node->data_node = data_node;
   

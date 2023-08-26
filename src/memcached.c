@@ -68,6 +68,7 @@ void handle_client(struct eventloop_data eventloop, int csock, char mode) {
   int status;
   log(2, "handle fd: %d modo: %d", csock, mode);
   if (mode == TEXT_MODE)
+    read_fd();
     status = text_handler(csock);
   else if (mode == BIN_MODE)
     status = bin_handler(csock);
@@ -111,12 +112,12 @@ void server(int text_sock, int bin_sock, unsigned nthreads) {
   eventloop.bin_sock = bin_sock;
   
   event.data.fd = text_sock;
-  event.events = EPOLLIN | EPOLLEXCLUSIVE;
+  event.events = EPOLLIN | EPOLLEXCLUSIVE | EPOLLET;
   if (epoll_ctl(epfd, EPOLL_CTL_ADD, text_sock, &event) < 0)
     quit("Escucha de epoll en socket de conexion modo texto");
 
   event.data.fd = bin_sock;
-  event.events = EPOLLIN | EPOLLEXCLUSIVE;
+  event.events = EPOLLIN | EPOLLEXCLUSIVE | EPOLLET;
   if (epoll_ctl(epfd, EPOLL_CTL_ADD,  bin_sock, &event) < 0)
     quit("Escucha de epoll en socket de conexion modo binario");
 

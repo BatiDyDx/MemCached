@@ -2,6 +2,7 @@
 #include <assert.h>
 #include <string.h>
 #include "cache.h"
+#include "dalloc.h"
 #include "lru.h"
 #include "ll.h"
 
@@ -31,8 +32,9 @@ uint32_t list_size() {
 }
 
 List list_init() {
-  List list = malloc(sizeof(struct _LLNode));
-  assert(list);
+  List list = dalloc(sizeof(struct _LLNode));
+  if (list == NULL)
+    return NULL;
   list->prev = NULL;
   list->next = NULL;
   return list;
@@ -72,8 +74,9 @@ void list_set_lru_priority(List list, LRUNode lru_priority) {
 }
 
 List list_insert(List list, Data data) {
-  List new_node = malloc(sizeof(struct _LLNode));
-  assert(new_node != NULL);
+  List new_node = dalloc(sizeof(struct _LLNode));
+  if (new_node == NULL)
+    return NULL;
   new_node->prev = list;
   if (list->next)
     list->next->prev = new_node;

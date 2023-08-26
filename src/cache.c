@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <pthread.h>
 #include <string.h>
+#include "common.h"
 #include "stats.h"
 #include "cache.h"
 #include "ll.h"
@@ -100,8 +101,9 @@ enum code cache_get(Cache cache, char mode, char* key, unsigned klen, char **val
   }
   Data data = list_get_data(node);
   *vlen = data.vlen;
-  *val = malloc(*vlen);
-  assert(*val);
+  *val = dalloc(*vlen);
+  if (*val == NULL)
+    return EOOM;
   memcpy(*val, data.val, *vlen); // Copiamos para proteger la informacion
   reset_lru_status(cache_get_lru_queue(cache), list_get_lru_priority(node));
   UNLOCK_ROW(idx);
@@ -116,6 +118,8 @@ enum code cache_put(Cache cache, char mode, char* key, unsigned klen, char *valu
   if (!node) {
     Data new_data = data_wrap(key, klen, value, vlen, mode);
     List new_node = list_insert(cache->buckets[idx], new_data);
+    if (!new_node)
+      return EOOM;
     LRUNode lru_priority = lru_push(cache->queue, idx, new_node);
     list_set_lru_priority(new_node, lru_priority);
     cache_update_stats(cache, mode, stats_inc_keys);

@@ -3,7 +3,7 @@
 
 void* dalloc(size_t size) {
   void* ptr = malloc(size);
-  for (int i = 0; i < DISMISS_ATTEMPTS && !ptr; i++) {
+  while (!ptr && !lru_empty(cache_get_lru_queue(cache))) {
     lru_dismiss(cache);
     ptr = malloc(size);
   }

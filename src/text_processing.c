@@ -14,38 +14,43 @@
 #include "dalloc.h"
 #include "stats.h"
 
+static inline min(int x, int y) {
+  return x <= y ? x : y;
+}
+
 /* 0: todo ok, continua. -1 errores */
-int text_handler(int fd) {
+int text_handler(struct ClientData *cdata) {
   long nread;
   char buf[TEXT_LIMIT_SIZE];
   enum IO_STATUS_CODE err;
-
-  err = read_fd(fd, buf, TEXT_LIMIT_SIZE, &nread);
-  if (err == EMPTY)
-    return 0;
-  else if (err == ERROR || err == CLOSED)
-    return -1;
-
-  log(3, "%i bytes leidos del file descriptor %i", nread, fd);
-
-  enum code op;
-  enum code res;
-  char *end_byte, *toks[3];
+  char *ebyte; // end byte
+  char *toks[3];
   int lens[3];
+  enum code op, res;
+  int fd = cdata->client_fd;
+  nread = min(cdata->current_idx, 2048);
+  ebyte = memchr(cdata->buffer, '\n', nread);
 
-  if ((end_byte = (char*) memchr(buf, '\n', nread))) {
-    *end_byte = '\0';
-    log(3, "Comando completo: <%s>", buf);
-    op = text_parser(buf,toks,lens);
-  } else {
+  if (!ebyte && nread == 2048) { // Mensaje muy largo
     log(3, "Comando invalido: es muy largo");
     op = EINVALID;
+  } else if (!ebyte) { // Mensaje incompleto 
+    return 0;
+  } else {
+    *ebyte = '\0';
+    log(3, "Comando completo: <%s>", buf);
+    op = text_parser(buf,toks,lens);
   }
+
   switch (op) {
     case PUT:
       char *key, *value;
       key = dalloc(sizeof(char) * lens[1]);
+      if (!key)
+        return -1;
       value = dalloc(sizeof(char) * lens[2]);
+      if (!value)
+        return -1;
       memcpy(key, toks[1], lens[1]);
       memcpy(value, toks[2], lens[2]);
       res = cache_put(cache, TEXT_MODE, key, lens[1], value, lens[2]);
