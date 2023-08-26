@@ -17,10 +17,6 @@
 #include "io.h"
 #include "sock.h"
 
-// Codificamos modo y fd en enteros de 64 bits
-#define GET_FD(data) ((int) data->client_fd)
-#define GET_MODE(data) ((int) data->mode)
-
 Cache cache;
 
 struct Config {
@@ -67,6 +63,11 @@ void handle_signals() {
 void handle_client(struct eventloop_data eventloop, struct ClientData* cdata) {
   int status;
   log(2, "handle fd: %d modo: %d", cdata->client_fd, cdata->mode);
+  enum IO_STATUS_CODE err = read_fd(cdata, MAX_READ_SIZE);
+  if (err == EMPTY)
+    return; // No hay comandos
+  else if (err == ERROR || err == CLOSED)
+    return;
   if (cdata->mode == TEXT_MODE)
     status = text_handler(cdata);
   else if (cdata->mode == BIN_MODE)
