@@ -16,9 +16,12 @@ clean:
 run: all
 	./memcached
 
+docs:
+	doxygen doxygen.cfg
+
 .deps.mk:
 	$(CC) -MM src/*.c > .deps.mk
 
-.PHONY: all clean run
+.PHONY: all clean run docs
 
 include .deps.mk

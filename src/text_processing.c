@@ -1,5 +1,4 @@
 #define _GNU_SOURCE /* strchrnul */
-
 #include <unistd.h>
 #include <stdio.h>
 #include <string.h>
@@ -26,7 +25,7 @@ int text_handler(struct ClientData *cdata) {
   char *toks[3];
   int lens[3];
   enum code op, res;
-  int fd = cdata->client_fd;
+  int fd = cdata->fd;
   nread = min(cdata->current_idx, 2048);
   ebyte = memchr(cdata->buffer, '\n', nread);
 
@@ -40,7 +39,7 @@ int text_handler(struct ClientData *cdata) {
     log(3, "Comando completo: <%s>", cdata->buffer);
     op = text_parser(cdata->buffer, toks, lens);
   }
-  fd_flush(cdata->client_fd); // El restante no lo queremos
+  fd_flush(cdata->fd); // El restante no lo queremos
   switch (op) {
     case PUT:
       char *key, *value;

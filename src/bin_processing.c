@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <arpa/inet.h>
 #include <string.h>
 #include <stdio.h>
@@ -13,14 +14,13 @@
 #include "memcached.h"
 #include "bin_processing.h"
 
-
 /* 0: todo ok, continua. -1 errores */
 int bin_handler(struct ClientData* cdata) {
   if(cdata->current_idx == 0) // ningun byte
     return 0;
   char op = cdata->buffer[0]; // primer byte del buffer
   if (!valid_rq(op)) 
-    answer_bin_client(cdata, EINVALID, NULL, 0);
+    op = EINVALID;
   
   char* toks[2];
   int lens[2];
@@ -31,8 +31,7 @@ int bin_handler(struct ClientData* cdata) {
   case PUT:
     ret = bin_parser(cdata, toks, lens, 2); // consumiremos 2 argumentos
     if(ret <= 0)
-      return ret; 
-    log(3, "binary parse: PUT %s %s", toks[0], toks[1]);
+      return ret;
     res = cache_put(cache, BIN_MODE,  toks[0], lens[0], toks[1], lens[1]);
     answer_bin_client(cdata, res, NULL, 0);
     break;
@@ -40,8 +39,7 @@ int bin_handler(struct ClientData* cdata) {
   case DEL: 
     ret = bin_parser(cdata, toks, lens, 1); // cosumiremos 1 argumento
     if(ret <= 0)
-      return ret; 
-    log(3, "binary parse: DEL %s %d", toks[0], lens[0]);
+      return ret;
     res = cache_del(cache, BIN_MODE, toks[0], lens[0]); 
     answer_bin_client(cdata, res, NULL, 0);
     break;
@@ -50,7 +48,6 @@ int bin_handler(struct ClientData* cdata) {
     ret = bin_parser(cdata, toks, lens, 1); // consumiremos 1 argumento
     if(ret <= 0)
       return ret;
-    log(3, "binary parse: GET %s %d", toks[0], toks[1]);
     char* val;
     unsigned vlen;
     res = cache_get(cache, BIN_MODE, toks[0], lens[0], &val, &vlen);
@@ -58,7 +55,6 @@ int bin_handler(struct ClientData* cdata) {
     break;
 
   case STATS:
-    log(3, "binary parse: STATS");
     char buf[1000];
     struct Stats stats_buf;
     int len;
@@ -66,23 +62,41 @@ int bin_handler(struct ClientData* cdata) {
     if (res == OK)
       len = format_stats(&stats_buf, buf, 1000);
     answer_bin_client(cdata, res, buf, len);
-      break;
-    }
+    break;
 
-  return 0;
+  case EINVALID:
+    answer_bin_client(cdata, EINVALID, NULL, 0);
+    break;
+
+  case EUNK:
+    answer_bin_client(cdata, EUNK, NULL, 0);
+    break;
+
+  default:
+    assert(0);
+    return -1;  
+  }
+  fd_flush(cdata->fd);
+  return 1;
 }
 
 int bin_parser(struct ClientData *cdata, char *toks[], int *lens , int ntoks) {
   int idx = 1;
+  log(2,"client_idx %ld",cdata->current_idx);
   for (int i = 0; i < ntoks; i++) {
-      if(cdata->current_idx - idx < 4)
+      if(cdata->current_idx - idx < 4) {
+        log(2,"not enough bytes for len");
         return 0; // no hay suficientes bytes en el socket para len
-      memcpy(lens + i, (cdata->buffer + 1),4);
+      }
+      memcpy(lens + i, (cdata->buffer + idx),4);
       lens[i] = ntohl(lens[i]); // cambiar de big endian a little endian
       idx += 4;
-      if(cdata->current_idx - idx < lens[i])
+      if(cdata->current_idx - idx < lens[i]){
+        log(2,"not enough bytes for data");
         return 0; // no hay suficientes byes en el socket para la data
+      }
       idx += lens[i];
+      log(2,"lens i:%d = %ld",i,lens[i]);
   }
   idx = 1;
   for (int i = 0; i < ntoks; i++){
@@ -91,18 +105,20 @@ int bin_parser(struct ClientData *cdata, char *toks[], int *lens , int ntoks) {
     idx += 4;
     memcpy(toks[i],(cdata->buffer + idx), lens[i]);// se carga el argumento 
     idx += lens[i];
+    log(2,"token %s",toks[i]); 
   }
+
   return 1;
 }
 
 int answer_bin_client(struct ClientData* cdata, enum code res, char *data, uint32_t len) {
-  log(2, "Respuesta op: %d a %d", res, cdata->client_fd);
-  if (write(cdata->client_fd, &res, 1) < 0)
+  log(2, "Respuesta op: %d a %d", res, cdata->fd);
+  if (write(cdata->fd, &res, 1) < 0)
     return -1;
   if (data) {
-  uint32_t len_aux = htonl(len);
-    write(cdata->client_fd, &len_aux, 4);
-    if (write(cdata->client_fd, data, len) < 0)
+    uint32_t len_aux = htonl(len);
+    write(cdata->fd, &len_aux, 4);
+    if (write(cdata->fd, data, len) < 0)
       return -1;			
   }
   return 0;

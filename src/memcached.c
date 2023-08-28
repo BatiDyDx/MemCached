@@ -64,8 +64,8 @@ void handle_signals() {
 
 void handle_client(struct eventloop_data eventloop, struct ClientData* cdata) {
   int status;
-  log(2, "handle fd: %d modo: %d", cdata->client_fd, cdata->mode);
-  enum IO_STATUS_CODE err = read_fd(cdata);
+  log(2, "handle fd: %d modo: %d", cdata->fd, cdata->mode);
+  enum IO_STATUS_CODE err = client_fill_buffer(cdata);
   if (err == ERROR || err == CLOSED) // Cerrar
     return;
   else if (cdata->mode == TEXT_MODE)
@@ -75,17 +75,15 @@ void handle_client(struct eventloop_data eventloop, struct ClientData* cdata) {
   else
     assert(0);
   if (status < 0) { // Determinar si se cierra la conexion
-    close(cdata->client_fd);
-    epoll_ctl(eventloop.epfd, EPOLL_CTL_DEL, cdata->client_fd, NULL);
-    log(1, "Cierre de conexion con el fd: %d", cdata->client_fd);
-    free(cdata->buffer);
-    free(cdata);
+    epoll_ctl(eventloop.epfd, EPOLL_CTL_DEL, cdata->fd, NULL);
+    client_close_connection(cdata);
     return;
   } else if (status == 1) // Mensaje enviado, limpiamos el buffer
-    reset_client_info(cdata);
-  //struct epoll_event event;
-  //POLLET | EPOLLEXCLUSIVE | EPOLLONESHOT;
-  //epoll_ctl(eventloop.epfd, EPOLL_CTL_MOD, cdata->client_fd, &events);
+    client_reset_info(cdata);
+  struct epoll_event event;
+  event.events = EPOLLIN | EPOLLONESHOT;
+  event.data.ptr = cdata;
+  epoll_ctl(eventloop.epfd, EPOLL_CTL_MOD, cdata->fd, &event);
 }
 
 void worker_thread(void) {
@@ -96,7 +94,7 @@ void worker_thread(void) {
     if (fdc < 0)
       quit("wait en epoll");
     struct ClientData *cdata = event.data.ptr;
-    sock = cdata->client_fd;
+    sock = cdata->fd;
     // Aceptar conexiones
     if (sock == eventloop.text_sock)
       accept_clients(eventloop, TEXT_MODE);
@@ -119,12 +117,12 @@ void server(int text_sock, int bin_sock, unsigned nthreads) {
   eventloop.text_sock = text_sock;
   eventloop.bin_sock = bin_sock;
   
-  event.data.ptr = cdata_init(text_sock, 0); // Se puede ahorrar el buffer
+  event.data.ptr = listen_data_init(text_sock);
   event.events = EPOLLIN | EPOLLEXCLUSIVE | EPOLLET;
   if (epoll_ctl(epfd, EPOLL_CTL_ADD, text_sock, &event) < 0)
     quit("Escucha de epoll en socket de conexion modo texto");
 
-  event.data.ptr = cdata_init(bin_sock, 0);
+  event.data.ptr = listen_data_init(bin_sock);
   event.events = EPOLLIN | EPOLLEXCLUSIVE | EPOLLET;
   if (epoll_ctl(epfd, EPOLL_CTL_ADD, bin_sock, &event) < 0)
     quit("Escucha de epoll en socket de conexion modo binario");
@@ -137,9 +135,7 @@ void server(int text_sock, int bin_sock, unsigned nthreads) {
   pthread_join(threads[0], NULL);
 }
 
-int memcache_config(int argc, char** argv, struct Config *config) {
-  // marg y narg representan si se encontraron argumentos que determinan el limite
-  // o numero de hilos
+int get_config(int argc, char** argv, struct Config *config) {
   int opt;
   config->nthreads = sysconf(_SC_NPROCESSORS_ONLN);
   config->memsize  = MEM_LIMIT;
@@ -161,7 +157,7 @@ int memcache_config(int argc, char** argv, struct Config *config) {
         config->cache_cells = atoi(optarg);
         break;
       default:
-        printf("Uso del programa\n");
+        usage(argv[0]);
     }
   }
 
@@ -172,7 +168,7 @@ int main(int argc, char **argv) {
   int text_sock, bin_sock;
   struct Config config;
 
-  memcache_config(argc, argv, &config);
+  get_config(argc, argv, &config);
   handle_signals();
   make_bindings(&text_sock, &bin_sock);
 

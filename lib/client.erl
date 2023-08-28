@@ -16,18 +16,42 @@
 -define(SEND(Socket, Data),
 case gen_tcp:send(Socket, Data) of
     {error, Reason} -> throw(Reason);
+    _ -> ok
 end).
 
 -define(RECV(Socket, Len),
 case gen_tcp:recv(Socket, Len) of
     {error, Reason} -> throw(Reason);
-	Data -> Data
+    {ok, Data} -> Data
 end).
 
 -define(WAIT_RES,
 receive
-    RES -> RES
+    {ans, RES} -> RES
 end).
+
+recv_ans(Socket) ->
+  Ans = ?RECV(Socket, 1),
+  case Ans of
+      <<?OK>>        -> ok;
+      <<?EINVALID>>  -> einvalid;
+      <<?ENOTFOUND>> -> enotfound;
+      <<?EBINARY>>   -> ebinary;
+      <<?EBIG>>      -> ebig;
+      <<?EUNK>>      -> eunk;
+      <<?EOOM>>      -> eoom;
+      _             -> io:fwrite("Respuesta desconocida~n"),
+                       error
+  end.
+
+recv_ans_data(Socket) ->
+    case recv_ans(Socket) of
+        ok -> case gen_tcp:recv(Socket,4) of
+                  {ok, <<Len:32/big>>} -> ?RECV(Socket, Len);
+                  {error, Reason} -> {error, Reason}
+              end;
+        Error -> Error
+    end.
 
 start(Hostname, IsPriv) ->
     if
@@ -37,53 +61,42 @@ start(Hostname, IsPriv) ->
             Port = 8889
     end,
     spawn(fun() ->
-        %activo
-        %{ok, Socket} = gen_tcp:connect(Hostname,Port,[{reuseaddr, true},{active,true},binary]),
-        %pasivo
         % TENEMOS QUE CAPTURAR ERROR DE CONEXION
-        {ok, Socket} = gen_tcp:connect(Hostname,Port,[{reuseaddr, true},{active,false},binary]),
+        {ok, Socket} = gen_tcp:connect(Hostname,Port,[{reuseaddr, true},{active, false},binary]),
         worker_thread(Socket)
     end).
 
+process_request(Socket) ->
+  receive   % TODO Refactorizar
+    {put, Pid, Cmd} -> ?SEND(Socket, Cmd),
+                      Res = recv_ans(Socket),
+                      Pid ! {ans, Res};
+    {del, Pid, Cmd} -> ?SEND(Socket, Cmd),
+                      Res = recv_ans(Socket),
+                      Pid ! {ans, Res};
+    {stats, Pid, Cmd} -> ?SEND(Socket, Cmd),
+                        Res = recv_ans_data(Socket),                                        
+                        Pid ! {ans, Res};
+    {get, Pid, Cmd} -> ?SEND(Socket, Cmd),
+                        case recv_ans_data(Socket) of
+                            {error, Error} -> Res = Error;
+                            Data -> Res = binary_to_term(Data)
+                        end,
+                        Pid ! {ans, Res};
+    exit -> throw(closed)
+  end.
+
 worker_thread(Socket) ->
-    % -------------------- PASIVO ---------------------
-    receive   % TODO Refactorizar
-        {put, Pid, Cmd} -> ?SEND(Socket, Cmd),
-                           Res = recv_ans(Socket),
-	                       Pid ! Res,
-	                       worker_thread(Socket);
-        {del, Pid, Cmd} -> ?SEND(Socket, Cmd),
-                           Res = recv_ans(Socket),
-	                       Pid ! Res,
-	                       worker_thread(Socket);
-        {stats, Pid, Cmd} -> ?SEND(Socket, Cmd),
-                             Res = rcv_ans_data(Socket),                                        
-	                         Pid ! Res,
-	                         worker_thread(Socket);
-        {get, Pid, Cmd} -> ?SEND(Socket, Cmd),
-                           Res = rcv_ans_data(Socket),
-	                       Pid ! Res,
-	                       worker_thread(Socket);
-        exit -> close_conn(Socket)
+    try process_request(Socket) of
+      _ -> worker_thread(Socket)
+    catch
+      throw:_ -> close_conn(Socket)
     end.
 
-    % ------------------ ACTIVO -----------------
-    % receive
-    %     {tcp, Socket, Data} -> 
-    %         parse_data(Data, Socket);
-    %     {send, Cmd} -> case gen_tcp:send(Socket, Cmd) of
-    %                         ok -> io:fwrite("Enviado!~n");
-    %                         {error, Reason} -> io:fwrite("Error: ~s~n", [Reason])
-    %                     end,
-    %                     worker_thread(Socket);
-    %     {tcp_closed, _} -> io:fwrite("Conexion terminada~n"),
-    %                        gen_tcp:close(Socket);
-    %     exit -> gen_tcp:close(Socket)
-    % end.
-
 close_conn(Socket) ->
-    io:fwrite("Conexión terminada"),
-    gen_tcp:close(Socket).
+    io:fwrite("Conexión terminada~n"),
+    gen_tcp:close(Socket),
+    closed.
 
 put(Id, Key, Value) ->
     Bkey = term_to_binary(Key),
@@ -91,53 +104,28 @@ put(Id, Key, Value) ->
     Klen = byte_size(Bkey),
     Vlen = byte_size(Bval),
     Cmd = <<?PUT:8,Klen:32/big,Bkey/binary,Vlen:32/big,Bval/binary>>,
-    Id ! {put, Cmd},
+    Id ! {put, self(), Cmd},
     ?WAIT_RES.
 
 get(Id, Key) ->
     Bkey = term_to_binary(Key),
     Klen = byte_size(Bkey),
     Cmd = <<?GET:8,Klen:32/big,Bkey/binary>>,
-    Id ! {get, Cmd},
+    Id ! {get, self(), Cmd},
     ?WAIT_RES.
 
 del(Id, Key) ->
     Bkey = term_to_binary(Key),
     Klen = byte_size(Bkey),
     Cmd = <<?DEL:8,Klen:32/big,Bkey/binary>>,
-    Id ! {del, Cmd},
+    Id ! {del, self(), Cmd},
     ?WAIT_RES.
 
 stats(Id) ->
     Cmd = <<?STATS:8>>,
-    Id ! {stats, Cmd},
+    Id ! {stats, self(), Cmd},
     ?WAIT_RES.
 
 exit(Id) ->
     Id ! exit.
-
-recv_ans(Socket) ->
-	Data = RECV(Socket, 1),
-	case Data of
-	    <<?OK>>        -> ok;
-	    <<?EINVALID>>  -> einvalid;
-	    <<?ENOTFOUND>> -> enotfound;
-	    <<?EBINARY>>   -> ebinary;
-	    <<?EBIG>>      -> ebig;
-	    <<?EUNK>>      -> eunk;
-	    <<?EOOM>>      -> eoom;
-	    _             -> io:fwrite("Respuesta desconocida~n"),
-	                     error
-	end;
-
-recv_ans_data(Socket) ->
-    case recv_ans(Socket) of
-        ok ->  case gen_tcp:recv(Socket,4) of
-                   {ok, <<Len:32/big-endian>>} ->
-				       case gen_tcp:recv(Socket, Len) of
-					       {ok, Data} -> Data;
-                           {error, Reason} -> 
-                {error, Reason} -> 
-        Error -> Error
-    end.
 

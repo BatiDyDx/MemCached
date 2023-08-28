@@ -6,9 +6,8 @@
 #include "lru.h"
 #include "ll.h"
 
-static inline int cmp_keys(char mode1, char mode2, char *key1, char *key2,
-                           uint64_t len1, uint64_t len2) {
-  return mode1 == mode2 && len1 == len2 && !memcmp(key1, key2, len1);
+static inline int cmp_keys(char *key1, char *key2, uint64_t len1, uint64_t len2) {
+  return len1 == len2 && !memcmp(key1, key2, len1);
 }
 
 struct _LLNode {
@@ -87,11 +86,11 @@ List list_insert(List list, Data data) {
   return new_node;
 }
 
-List list_search(List list, char mode, char *key, uint64_t klen) {
+List list_search(List list, char *key, uint64_t klen) {
   List node;
   for (node = list->next; node; node = node->next) {
     Data data = node->data;
-    if (cmp_keys(mode, data.mode, key, data.key, klen, data.klen))
+    if (cmp_keys(key, data.key, klen, data.klen))
       return node;
   }
   return NULL;
@@ -103,8 +102,8 @@ void list_remove(List node) {
     node->next->prev = node->prev;
 }
 
-List list_search_and_remove(List list, char mode, char *key, uint64_t klen) {
-  List node = list_search(list, mode, key, klen);
+List list_search_and_remove(List list, char *key, uint64_t klen) {
+  List node = list_search(list, key, klen);
   if (!node)
     return NULL;
   list_remove(node);
