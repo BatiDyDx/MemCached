@@ -9,4 +9,6 @@
 
 void* dalloc(size_t size);
 
+void* drealloc(void* ptr, size_t size, size_t inc);
+
 #endif

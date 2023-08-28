@@ -1,23 +1,24 @@
 #include "io.h"
+#include "dalloc.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <errno.h>
 
-enum IO_STATUS_CODE read_fd(int fd, struct ClientData *buf, uint64_t size) {
-  buf->len = read(fd, buf->buffer, size);
-	if (buf->len < 0 && (errno == EAGAIN || errno == EWOULDBLOCK))
+enum IO_STATUS_CODE fd_flush(int fd) {
+  char buf[1024];
+  int rc;
+  while ((rc = read(fd, buf, 1024)) >= 0);
+  log(3, "Flush al fd %d", fd);
+  if (rc < 0 && (errno == EAGAIN || errno == EWOULDBLOCK))
 		return EMPTY;
-	if (buf->len == 0)
+	if (rc == 0)
 		return CLOSED;
-  if (buf->len < 0)
-    return ERROR;
-  buf->current_idx = buf->len;
-  return IO_OK;
+  return ERROR;
 }
 
-void usage() {
-  fprintf(stderr, "Uso: ./memcache [-n hilos] [-m memoria] [-c celdas] [-r regiones]");
+void usage(char *name) {
+  fprintf(stderr, "Uso: %s [-n hilos] [-m memoria] [-c celdas] [-r regiones]", name);
   exit(EXIT_FAILURE);
 }
 

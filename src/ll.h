@@ -36,11 +36,11 @@ void list_set_lru_priority(List list, LRUNode lru_priority);
 
 List list_insert(List list, Data data);
 
-List list_search(List list, char mode, char *key, uint64_t klen);
+List list_search(List list, char *key, uint64_t klen);
 
 void list_remove(List node);
 
-List list_search_and_remove(List list, char mode, char *key, uint64_t klen);
+List list_search_and_remove(List list, char *key, uint64_t klen);
 
 List list_remove_first(List list);
 

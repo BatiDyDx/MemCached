@@ -3,9 +3,11 @@
 #include <assert.h>
 #include <pthread.h>
 #include <string.h>
+#include "common.h"
 #include "stats.h"
 #include "cache.h"
 #include "ll.h"
+#include "dalloc.h"
 
 struct _Cache {
   List *buckets;
@@ -91,7 +93,7 @@ enum code cache_get(Cache cache, char mode, char* key, unsigned klen, char **val
   cache_update_stats(cache, mode, stats_inc_get);
   unsigned idx = NROW(key, klen);
   RD_LOCK_ROW(idx);
-  List node = list_search(cache->buckets[idx], mode, key, klen);
+  List node = list_search(cache->buckets[idx], key, klen);
   if (!node) {
     UNLOCK_ROW(idx);
     *val = NULL;
@@ -99,9 +101,16 @@ enum code cache_get(Cache cache, char mode, char* key, unsigned klen, char **val
     return ENOTFOUND;
   }
   Data data = list_get_data(node);
+  if (mode == TEXT_MODE && data.mode && BIN_MODE) {
+    UNLOCK_ROW(idx);
+    *val = NULL;
+    *vlen = 0;
+    return EBINARY;
+  }
   *vlen = data.vlen;
-  *val = malloc(*vlen);
-  assert(*val);
+  *val = dalloc(*vlen);
+  if (*val == NULL)
+    return EOOM;
   memcpy(*val, data.val, *vlen); // Copiamos para proteger la informacion
   reset_lru_status(cache_get_lru_queue(cache), list_get_lru_priority(node));
   UNLOCK_ROW(idx);
@@ -112,10 +121,12 @@ enum code cache_put(Cache cache, char mode, char* key, unsigned klen, char *valu
   cache_update_stats(cache, mode, stats_inc_put);
   unsigned idx = NROW(key, klen);
   WR_LOCK_ROW(idx);
-  List node = list_search(cache->buckets[idx], mode, key, klen);
+  List node = list_search(cache->buckets[idx], key, klen);
   if (!node) {
     Data new_data = data_wrap(key, klen, value, vlen, mode);
     List new_node = list_insert(cache->buckets[idx], new_data);
+    if (!new_node)
+      return EOOM;
     LRUNode lru_priority = lru_push(cache->queue, idx, new_node);
     list_set_lru_priority(new_node, lru_priority);
     cache_update_stats(cache, mode, stats_inc_keys);
@@ -137,7 +148,7 @@ enum code cache_del(Cache cache, char mode, char* key, unsigned klen) {
   unsigned idx = NROW(key, klen);
   WR_LOCK_ROW(idx);
   List list = cache->buckets[idx];
-  List del_node = list_search_and_remove(list, mode, key, klen);
+  List del_node = list_search_and_remove(list, key, klen);
   if (!del_node) {
     UNLOCK_ROW(idx);
     return ENOTFOUND;

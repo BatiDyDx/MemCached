@@ -1,11 +1,19 @@
+#include <string.h>
 #include "dalloc.h"
 #include "memcached.h"
 
 void* dalloc(size_t size) {
   void* ptr = malloc(size);
-  for (int i = 0; i < DISMISS_ATTEMPTS && !ptr; i++) {
+  while (!ptr && !lru_empty(cache_get_lru_queue(cache))) {
     lru_dismiss(cache);
     ptr = malloc(size);
   }
   return ptr;
+}
+
+void* drealloc(void* ptr, size_t size, size_t inc) {
+  void* realloc_ptr = dalloc(size + inc);
+  memmove(realloc_ptr, ptr, size);
+  free(ptr);
+  return realloc_ptr;
 }

@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>
@@ -5,8 +6,10 @@
 #include <unistd.h>
 #include <sys/epoll.h>
 #include <errno.h>
+#include "client_data.h"
 #include "memcached.h"
 #include "sock.h"
+#include "dalloc.h"
 #include "log.h"
 #include "common.h"
 #include "io.h"
@@ -76,22 +79,18 @@ void make_bindings(int *text_sock, int *bin_sock) {
 
 // Acepta clientes encolados. Esto es necesario ya que los sockets de escucha
 // son tratados por epoll en modo edge-triggered.
-// TODO Puede no ser necesario este modo de uso para sockets de escucha, en ese
-// caso no seria necesario (aunque tampoco incorrecto) este procedimiento
 int accept_clients(struct eventloop_data eventloop, char mode) {
   int csock;
   struct epoll_event event;
   int lsock = mode == TEXT_MODE ? eventloop.text_sock : eventloop.bin_sock;
-  while ((csock = accept(lsock, NULL, 0)) >= 0) {
+  while ((csock = accept4(lsock, NULL, 0, SOCK_NONBLOCK)) >= 0) {
     log(2, "accept fd: %d en modo: %d", csock, mode);
-	struct ClientData* cdata = dalloc(sizeof(struct ClientData));
-	cdata->buffer = dalloc(sizeof(CLIENT_BUF_SIZE));
-	cdata->client_fd = csock;
-	cdata->mode = mode;
-    event.events = EPOLLIN | EPOLLEXCLUSIVE | EPOLLET;
+    struct ClientData *cdata = client_data_init(csock, mode);
+    event.events = EPOLLIN | EPOLLONESHOT;
     event.data.ptr = cdata;
     epoll_ctl(eventloop.epfd, EPOLL_CTL_ADD, csock, &event);
   }
+  log(2,"afuera del while del accept");
   if(errno == EAGAIN || errno == EWOULDBLOCK)
     return 0;
   return -1;

@@ -9,17 +9,15 @@
 #include <signal.h>
 #include <pthread.h>
 #include <errno.h>
+#include "dalloc.h"
 #include "memcached.h"
 #include "common.h"
 #include "text_processing.h"
 #include "bin_processing.h"
 #include "cache.h"
+#include "client_data.h"
 #include "io.h"
 #include "sock.h"
-
-// Codificamos modo y fd en enteros de 64 bits
-#define GET_FD(n) ((int) n)
-#define GET_MODE(n) ((int) (n >> 32))
 
 Cache cache;
 
@@ -64,20 +62,28 @@ void handle_signals() {
   log(3, "Configuracion de handlers de señales");
 }
 
-void handle_client(struct eventloop_data eventloop, int csock, char mode) {
+void handle_client(struct eventloop_data eventloop, struct ClientData* cdata) {
   int status;
-  log(2, "handle fd: %d modo: %d", csock, mode);
-  if (mode == TEXT_MODE)
-    status = text_handler(csock);
-  else if (mode == BIN_MODE)
-    status = bin_handler(csock);
+  log(2, "handle fd: %d modo: %d", cdata->fd, cdata->mode);
+  enum IO_STATUS_CODE err = client_fill_buffer(cdata);
+  if (err == ERROR || err == CLOSED) // Cerrar
+    return;
+  else if (cdata->mode == TEXT_MODE)
+    status = text_handler(cdata);
+  else if (cdata->mode == BIN_MODE)
+    status = bin_handler(cdata);
   else
     assert(0);
   if (status < 0) { // Determinar si se cierra la conexion
-    close(csock);
-    epoll_ctl(eventloop.epfd, EPOLL_CTL_DEL, csock, NULL);
-    log(1, "Cierre de conexion con el fd: %d", csock);
-  }
+    epoll_ctl(eventloop.epfd, EPOLL_CTL_DEL, cdata->fd, NULL);
+    client_close_connection(cdata);
+    return;
+  } else if (status == 1) // Mensaje enviado, limpiamos el buffer
+    client_reset_info(cdata);
+  struct epoll_event event;
+  event.events = EPOLLIN | EPOLLONESHOT;
+  event.data.ptr = cdata;
+  epoll_ctl(eventloop.epfd, EPOLL_CTL_MOD, cdata->fd, &event);
 }
 
 void worker_thread(void) {
@@ -87,14 +93,15 @@ void worker_thread(void) {
     fdc = epoll_wait(eventloop.epfd, &event, 1, -1);
     if (fdc < 0)
       quit("wait en epoll");
-    sock = GET_FD(event.data.u64);
+    struct ClientData *cdata = event.data.ptr;
+    sock = cdata->fd;
     // Aceptar conexiones
     if (sock == eventloop.text_sock)
       accept_clients(eventloop, TEXT_MODE);
     else if (sock == eventloop.bin_sock)
       accept_clients(eventloop, BIN_MODE);
     else // Atender peticion
-      handle_client(eventloop, sock, GET_MODE(event.data.u64));
+      handle_client(eventloop, cdata);
   }
 }
 
@@ -110,14 +117,14 @@ void server(int text_sock, int bin_sock, unsigned nthreads) {
   eventloop.text_sock = text_sock;
   eventloop.bin_sock = bin_sock;
   
-  event.data.fd = text_sock;
-  event.events = EPOLLIN | EPOLLEXCLUSIVE;
+  event.data.ptr = listen_data_init(text_sock);
+  event.events = EPOLLIN | EPOLLEXCLUSIVE | EPOLLET;
   if (epoll_ctl(epfd, EPOLL_CTL_ADD, text_sock, &event) < 0)
     quit("Escucha de epoll en socket de conexion modo texto");
 
-  event.data.fd = bin_sock;
-  event.events = EPOLLIN | EPOLLEXCLUSIVE;
-  if (epoll_ctl(epfd, EPOLL_CTL_ADD,  bin_sock, &event) < 0)
+  event.data.ptr = listen_data_init(bin_sock);
+  event.events = EPOLLIN | EPOLLEXCLUSIVE | EPOLLET;
+  if (epoll_ctl(epfd, EPOLL_CTL_ADD, bin_sock, &event) < 0)
     quit("Escucha de epoll en socket de conexion modo binario");
 
   log(2, "Configuracion epoll con fd %d", epfd);
@@ -128,9 +135,7 @@ void server(int text_sock, int bin_sock, unsigned nthreads) {
   pthread_join(threads[0], NULL);
 }
 
-int memcache_config(int argc, char** argv, struct Config *config) {
-  // marg y narg representan si se encontraron argumentos que determinan el limite
-  // o numero de hilos
+int get_config(int argc, char** argv, struct Config *config) {
   int opt;
   config->nthreads = sysconf(_SC_NPROCESSORS_ONLN);
   config->memsize  = MEM_LIMIT;
@@ -152,7 +157,7 @@ int memcache_config(int argc, char** argv, struct Config *config) {
         config->cache_cells = atoi(optarg);
         break;
       default:
-        printf("Uso del programa\n");
+        usage(argv[0]);
     }
   }
 
@@ -163,7 +168,7 @@ int main(int argc, char **argv) {
   int text_sock, bin_sock;
   struct Config config;
 
-  memcache_config(argc, argv, &config);
+  get_config(argc, argv, &config);
   handle_signals();
   make_bindings(&text_sock, &bin_sock);
 
