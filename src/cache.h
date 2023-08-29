@@ -64,10 +64,15 @@ enum code cache_del(Cache cache, char mode, char* key, unsigned klen);
 //! almacenan segun el tipo del dato, texto o binario.
 //! @param[in] cache Cache sobre la cual se piden las estadisticas de uso
 //! @param[in] mode Modo sobre el cual se piden las estadisticas. Puede ser TEXT_MODE o BIN_MODE
+//! @return OK si el modo de estadisticas es valido, EUNK si no lo es.
 enum code cache_stats(Cache cache, char mode, struct Stats* stats);
 
+//! @brief Retorna la cola interna que lleva el mecanismo LRU.
 LRUQueue cache_get_lru_queue(Cache cache);
 
+//! @brief Dado un nodo y su numero de fila en la cache, intentará desalojarlo
+//! de la cache. El desalojo falla si algun hilo esta trabajando sobre esa fila
+//! @return 1 si el desalojo fue exitoso, 0 si no lo fue
 int cache_try_dismiss(Cache cache, uint64_t idx, List data_node);
 
 #endif

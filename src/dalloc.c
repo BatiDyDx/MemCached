@@ -1,6 +1,8 @@
 #include <string.h>
 #include "dalloc.h"
 #include "memcached.h"
+#include "cache.h"
+#include "lru.h"
 
 void* dalloc(size_t size) {
   void* ptr = malloc(size);

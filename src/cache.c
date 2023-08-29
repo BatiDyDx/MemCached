@@ -15,7 +15,7 @@ struct _Cache {
   struct Stats text_stats, bin_stats;
   pthread_rwlock_t *row_locks;
   pthread_mutex_t ts_lock, bs_lock;
-  uint32_t nregions, size;
+  uint64_t nregions, size;
 };
 
 LRUQueue cache_get_lru_queue(Cache cache) { return cache->queue; }

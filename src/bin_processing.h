@@ -5,16 +5,23 @@
 
 #include "client_data.h"
 
-//! @brief Función de manejo de entrada en binario. 
+//! @brief Función de manejo de entrada para clientes en modo binario.
+//! @param cdata - Informacion del cliente por atender
+//! @return 1 si el pedido fue atendido correctamente, 0 si el mensaje no esta
+//! completo, -1 si no hay memoria disponible
 int bin_handler(struct ClientData* cdata);
 
-//! @brief Parser binario.
-//!
-//! @param[in] fd - int. file descriptor.
-//! @param[out] toks - char *: tokens del comando.
-//! @param[out] lens - int *: longitudes de los tokens del comando.
-//! @param[in] ntoks - cantidad de tokens.
-int bin_parser(struct ClientData* cdata, char *toks[], int *lens , int ntoks);
+//! @brief Parser del modo binario para poder evaluar comandos en el protocolo binario
+//! @param cdata - Info de cliente del cual se parsea el comando
+//! @param toks  - Parametro de salida para almacenar llave y valor (cuando los haya). Estos valores
+//! son alocados por el parser, el array toks debe tener espacio suficiente
+//! @param lens  - Parametro de salida donde se guardan las longitudes en bytes de la llave
+//! y valor (cuando los haya). El array debe tener tamaño suficiente
+//! @param ntoks - Cantidad de tokens a parsear. Determinados segun la operacion
+int bin_parser(struct ClientData* cdata, char *toks[], uint32_t *lens , int ntoks);
 
+//! @brief Rutina para responder a clientes en modo binario segun el protocolo
+//! @return 0 si no hay errores, -1 si los hay
 int answer_bin_client(struct ClientData* cdata, enum code res, char *data, uint32_t len);
+
 #endif

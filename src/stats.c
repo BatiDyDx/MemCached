@@ -22,7 +22,7 @@ void stats_inc_keys(struct Stats *s) { s->keys++; }
 void stats_dec_keys(struct Stats *s) { s->keys--; }
 
 int format_stats(struct Stats *s, char buf[], unsigned n) {
-  log(4, "Format of stats");
+  log(4, "Formateado de estadisticas de uso");
   if (!s)
     return -1;
   int len = snprintf(buf, n, "PUTS=%lu DELS=%lu GETS=%lu KEYS=%lu",

@@ -109,13 +109,3 @@ List list_search_and_remove(List list, char *key, uint64_t klen) {
   list_remove(node);
   return node;
 }
-
-List list_remove_first(List list) {
-  List pnode;
-  if (list_empty(list))
-      return NULL;
-  pnode = list;
-  list = list->next;
-  free(pnode);
-  return list;
-}

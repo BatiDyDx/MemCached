@@ -26,7 +26,7 @@ int text_handler(struct ClientData *cdata) {
   int lens[3];
   enum code op, res;
   int fd = cdata->fd;
-  nread = min(cdata->current_idx, 2048);
+  nread = min(cdata->current_idx, TEXT_LIMIT_SIZE);
   ebyte = memchr(cdata->buffer, '\n', nread);
 
   if (!ebyte && nread == 2048) { // Mensaje muy largo

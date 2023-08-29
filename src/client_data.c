@@ -57,12 +57,15 @@ int client_increase_buffer(struct ClientData *cdata) {
   return 0;
 }
 
-void client_reset_info(struct ClientData* cdata) {
+int client_reset_info(struct ClientData* cdata) {
   log(3, "Reinicio de buffer para fd %d", cdata->fd);
   free(cdata->buffer);
   cdata->current_idx = 0;
   cdata->buf_size = BUFFER_SIZE;
   cdata->buffer = dalloc(cdata->buf_size);
+  if (!cdata->buffer)
+    return -1;
+  return 0;
 }
 
 void client_close_connection(struct ClientData *cdata) {
