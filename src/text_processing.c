@@ -126,9 +126,15 @@ enum code text_parser(char *buf, char *toks[TEXT_MAX_TOKS], int lens[TEXT_MAX_TO
 }
 
 int answer_text_client(int fd, enum code res, char *data, uint64_t len) {
-  log(2, "Respuesta %d a fd %d", res, fd);
-  char c; 
+  char c;
   const char *op_string = code_str(res);
+  // Bytes totales a escribir
+  if (len + strlen(op_string) > TEXT_LIMIT_SIZE) {
+    write(fd, "EBIG\n", 5);
+    log(2, "Respuesta %s a fd %d", "EBIG\n", fd);
+    return 0;
+  }
+  log(2, "Respuesta %s a fd %d", op_string, fd);
   if (write(fd, op_string, strlen(op_string)) < 0)
     return -1;
   if (data) {

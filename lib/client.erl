@@ -128,4 +128,3 @@ stats(Id) ->
 
 exit(Id) ->
     Id ! exit.
-
