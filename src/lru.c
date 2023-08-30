@@ -118,8 +118,7 @@ int lru_dismiss(Cache cache) {
     int suc = cache_try_dismiss(cache, node->idx, node->data_node);
     if (!suc)
       continue;
-    STATIC_ASSERT(0);
-    lru_remove(q, node); // Ojo, lru_remove bloquea la cola. Para solucionar esto podemos usar mutex recursivos
+    lru_remove(q, node);
     lru_free_node(node);
     i++;
   }

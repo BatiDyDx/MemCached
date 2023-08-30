@@ -8,6 +8,7 @@ void* dalloc(size_t size) {
   void* ptr = malloc(size);
   while (!ptr && !lru_empty(cache_get_lru_queue(cache))) {
     lru_dismiss(cache);
+    log(2,"desalojo realizado!");
     ptr = malloc(size);
   }
   return ptr;

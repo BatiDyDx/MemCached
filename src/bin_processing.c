@@ -97,7 +97,6 @@ int bin_parser(struct ClientData *cdata, char *toks[], uint32_t *lens , int ntok
     memcpy(toks[i],(cdata->buffer + idx), lens[i]);// se carga el argumento 
     idx += lens[i];
   }
-
   return 1;
 }
 
