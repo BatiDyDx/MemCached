@@ -1,6 +1,9 @@
 -module(client).
 -export([start/2,put/3,del/2,get/2,stats/1,exit/1]).
 
+-define(PORT, 8889).
+-define(PPORT, 889). % Puerto privilegiado
+
 -define(PUT, 11).
 -define(DEL, 12).
 -define(GET, 13).
@@ -13,12 +16,6 @@
 -define(EUNK, 115).
 -define(EOOM, 116).
 
--define(SEND(Socket, Data),
-case gen_tcp:send(Socket, Data) of
-    {error, Reason} -> throw(Reason);
-    _ -> ok
-end).
-
 -define(RECV(Socket, Len),
 case gen_tcp:recv(Socket, Len) of
     {error, Reason} -> throw(Reason);
@@ -27,7 +24,8 @@ end).
 
 -define(WAIT_RES,
 receive
-    {ans, RES} -> RES
+    {ans, Res} -> Res;
+    closed -> closed
 end).
 
 recv_ans(Socket) ->
@@ -47,50 +45,50 @@ recv_ans(Socket) ->
 recv_ans_data(Socket) ->
     case recv_ans(Socket) of
         ok -> case gen_tcp:recv(Socket,4) of
-                  {ok, <<Len:32/big>>} -> ?RECV(Socket, Len);
-                  {error, Reason} -> {error, Reason}
+                  {ok, <<Len:32/big>>} -> {ok, ?RECV(Socket, Len)};
+                  {error, Reason} -> throw(Reason)
               end;
-        Error -> Error
+        MemError -> MemError
     end.
 
-start(Hostname, IsPriv) ->
-    if
-        IsPriv -> 
-            Port = 889;
-        true ->  
-            Port = 8889
-    end,
+start(Hostname, Port) ->
     spawn(fun() ->
         % TENEMOS QUE CAPTURAR ERROR DE CONEXION
         {ok, Socket} = gen_tcp:connect(Hostname,Port,[{reuseaddr, true},{active, false},binary]),
-        worker_thread(Socket)
+        client(Socket)
     end).
 
-process_request(Socket) ->
-  receive   % TODO Refactorizar
-    {put, Pid, Cmd} -> ?SEND(Socket, Cmd),
-                      Res = recv_ans(Socket),
-                      Pid ! {ans, Res};
-    {del, Pid, Cmd} -> ?SEND(Socket, Cmd),
-                      Res = recv_ans(Socket),
-                      Pid ! {ans, Res};
-    {stats, Pid, Cmd} -> ?SEND(Socket, Cmd),
-                        Res = recv_ans_data(Socket),                                        
-                        Pid ! {ans, Res};
-    {get, Pid, Cmd} -> ?SEND(Socket, Cmd),
-                        case recv_ans_data(Socket) of
-                            {error, Error} -> Res = Error;
-                            Data -> Res = binary_to_term(Data)
-                        end,
-                        Pid ! {ans, Res};
-    exit -> throw(closed)
-  end.
+process_request(Socket, Data) ->
+  {Op, Cmd} = Data,
+  case gen_tcp:send(Socket, Cmd) of
+    {error, Reason} -> throw(Reason);
+    _ -> ok
+  end,
 
-worker_thread(Socket) ->
-    try process_request(Socket) of
-      _ -> worker_thread(Socket)
-    catch
-      throw:_ -> close_conn(Socket)
+  case Op of
+    put -> Ans = recv_ans(Socket);
+    del -> Ans = recv_ans(Socket);
+    stats -> case recv_ans_data(Socket) of
+                {ok, Res} -> Ans = {ok, binary_to_list(Res)};
+                MemError -> Ans = MemError
+              end;
+    get -> case recv_ans_data(Socket) of
+            {ok, Res} -> Ans = {ok, binary_to_term(Res)};
+            MemError -> Ans = MemError
+        end
+  end,
+  Ans.
+
+client(Socket) ->
+    receive
+      {req, Pid, Data} ->
+        try process_request(Socket, Data) of
+          Ans -> Pid ! {ans, Ans},
+          client(Socket)
+        catch
+          throw:_ -> close_conn(Socket)
+        end;
+      exit -> close_conn(Socket)
     end.
 
 close_conn(Socket) ->
@@ -104,27 +102,28 @@ put(Id, Key, Value) ->
     Klen = byte_size(Bkey),
     Vlen = byte_size(Bval),
     Cmd = <<?PUT:8,Klen:32/big,Bkey/binary,Vlen:32/big,Bval/binary>>,
-    Id ! {put, self(), Cmd},
+    Id ! {req, self(), {put, Cmd}},
     ?WAIT_RES.
 
 get(Id, Key) ->
     Bkey = term_to_binary(Key),
     Klen = byte_size(Bkey),
     Cmd = <<?GET:8,Klen:32/big,Bkey/binary>>,
-    Id ! {get, self(), Cmd},
+    Id ! {req, self(), {get, Cmd}},
     ?WAIT_RES.
 
 del(Id, Key) ->
     Bkey = term_to_binary(Key),
     Klen = byte_size(Bkey),
     Cmd = <<?DEL:8,Klen:32/big,Bkey/binary>>,
-    Id ! {del, self(), Cmd},
+    Id ! {req, self(), {del, Cmd}},
     ?WAIT_RES.
 
 stats(Id) ->
     Cmd = <<?STATS:8>>,
-    Id ! {stats, self(), Cmd},
+    Id ! {req, self(), {stats, Cmd}},
     ?WAIT_RES.
 
 exit(Id) ->
-    Id ! exit.
+    Id ! exit,
+    closed.
