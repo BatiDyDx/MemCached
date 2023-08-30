@@ -86,11 +86,10 @@ int accept_clients(struct eventloop_data eventloop, char mode) {
   while ((csock = accept4(lsock, NULL, 0, SOCK_NONBLOCK)) >= 0) {
     log(2, "accept fd: %d en modo: %d", csock, mode);
     struct ClientData *cdata = client_data_init(csock, mode);
-    event.events = EPOLLIN | EPOLLONESHOT;
+    event.events = EPOLLIN | EPOLLONESHOT;// | EPOLLET;
     event.data.ptr = cdata;
     epoll_ctl(eventloop.epfd, EPOLL_CTL_ADD, csock, &event);
   }
-  log(2,"afuera del while del accept");
   if(errno == EAGAIN || errno == EWOULDBLOCK)
     return 0;
   return -1;

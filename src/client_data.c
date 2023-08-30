@@ -26,32 +26,21 @@ struct ClientData* client_data_init(int csock, int mode) {
   return cdata;
 } 
 
-
-static inline void printBytes(char *buf, uint32_t len) {
-  for (uint32_t i = 0; i < len; i++)
-    printf("%d ", buf[i]);
-  putchar('\n');
-}
-
-
 enum IO_STATUS_CODE client_fill_buffer(struct ClientData *cdata) {
   long rb;
   int stop = 0;
   while (!stop) {
     if (cdata->current_idx + READ_SIZE > cdata->buf_size){
-      printf("in increase\n");
       if (client_increase_buffer(cdata) < 0)
         return ERROR;
     }
 
     rb = read(cdata->fd, cdata->buffer + cdata->current_idx, READ_SIZE);
-    printBytes(cdata->buffer, rb);   
     log(3, "Leidos %d bytes de fd %d", rb, cdata->fd);
     if (rb < READ_SIZE)
       stop = 1;
     if (rb > 0)
       cdata->current_idx += rb;
-    printf("ultimo byte: %c\n",cdata->buffer[cdata->current_idx-1]);
   }
 	if (rb < 0 && (errno != EAGAIN && errno != EWOULDBLOCK))
 		return ERROR;

@@ -80,7 +80,7 @@ void handle_client(struct eventloop_data eventloop, struct ClientData* cdata) {
   } else if (status == 1) // Mensaje enviado, limpiamos el buffer
     client_reset_info(cdata);
   struct epoll_event event;
-  event.events = EPOLLIN | EPOLLONESHOT;
+  event.events = EPOLLIN | EPOLLONESHOT;// | EPOLLET;
   event.data.ptr = cdata;
   epoll_ctl(eventloop.epfd, EPOLL_CTL_MOD, cdata->fd, &event);
 }

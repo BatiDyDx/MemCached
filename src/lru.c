@@ -24,11 +24,13 @@ void lru_free_node(LRUNode node) {
 }
 
 static inline void lru_lock(LRUQueue q) {
-  pthread_mutex_lock(&q->lock);
+  if (pthread_mutex_lock(&q->lock) < 0)
+    quit("lru_lock");
 }
 
 static inline void lru_unlock(LRUQueue q) {
-  pthread_mutex_unlock(&q->lock);
+  if (pthread_mutex_unlock(&q->lock) < 0)
+    quit("lru_unlock");
 }
 
 LRUQueue lru_init() {
@@ -70,11 +72,11 @@ LRUNode lru_push(LRUQueue q, unsigned idx, List data_node) {
   new_node->data_node = data_node;
   
   lru_lock(q);
-  q->last = new_node;
   if (lru_empty(q))
     q->first = new_node;
   else
     q->last->next = new_node;
+  q->last = new_node;
 
   new_node->prev = q->last;
   new_node->next = NULL;
@@ -84,14 +86,23 @@ LRUNode lru_push(LRUQueue q, unsigned idx, List data_node) {
 
 void lru_remove(LRUQueue q, LRUNode node) {
   lru_lock(q);
-  if (q->first == node)
+  if (q->first == node) {
     q->first = node->next;
+    if (node->next)
+      node->next->prev = NULL;
+  }
   else
     node->prev->next = node->next;
-  if (q->last == node)
+  if (q->last == node) {
     q->last = node->prev;
-  else
+    if (node->prev)
+      node->prev->next = NULL;
+  }
+  else {
+    assert(node->next);
+    //assert(node->prev);
     node->next->prev = node->prev;
+  }
   lru_unlock(q);
 }
 

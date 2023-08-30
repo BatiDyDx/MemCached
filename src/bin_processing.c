@@ -14,6 +14,12 @@
 #include "memcached.h"
 #include "bin_processing.h"
 
+void printBytes(char* token, uint32_t len){
+  for (uint32_t i = 0 ; i < len; i++)
+    printf("%d ",token[i]);
+  putchar('\n');
+}
+
 /* 0: todo ok, continua. -1 errores */
 int bin_handler(struct ClientData* cdata) {
   if(cdata->current_idx == 0) // ningun byte
@@ -78,6 +84,7 @@ int bin_handler(struct ClientData* cdata) {
 }
 
 int bin_parser(struct ClientData *cdata, char *toks[], uint32_t *lens , int ntoks) {
+  log(2, "Parseo binario a fd %d, cantidad de bytes: %u", cdata->fd, cdata->current_idx);
   int idx = 1;
   for (int i = 0; i < ntoks; i++) {
       if(cdata->current_idx - idx < 4)
@@ -101,7 +108,7 @@ int bin_parser(struct ClientData *cdata, char *toks[], uint32_t *lens , int ntok
 }
 
 int answer_bin_client(struct ClientData* cdata, enum code res, char *data, uint32_t len) {
-  log(2, "Respuesta op: %d a %d", res, cdata->fd);
+  log(2, "Respuesta op: %s a %d", code_str(res), cdata->fd);
   if (write(cdata->fd, &res, 1) < 0)
     return -1;
   if (data) {
