@@ -84,10 +84,10 @@ int accept_clients(struct eventloop_data eventloop, char mode) {
   struct epoll_event event;
   int lsock = mode == TEXT_MODE ? eventloop.text_sock : eventloop.bin_sock;
   while ((csock = accept4(lsock, NULL, 0, SOCK_NONBLOCK)) >= 0) {
-    log(2, "accept fd: %d en modo: %d", csock, mode);
+    log(1, "Nueva conexion, fd: %d en modo: %d", csock, mode);
     struct ClientData *cdata = client_data_init(csock, mode);
     if (!cdata) {
-      log(1, "Sin espacio para aceptar fd: %d", csock);
+      log(2, "Sin espacio para aceptar fd: %d", csock);
       close(csock);
       continue;
     }

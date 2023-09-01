@@ -30,9 +30,7 @@ struct ClientData* client_data_init(int csock, int mode) {
 enum IO_STATUS_CODE client_fill_buffer(struct ClientData *cdata) {
   long rb;
   int stop = 0;
-  log(1, "buf_size: %lu, read_size: %lu", BUFFER_SIZE, READ_SIZE);
   for (int i = 0; i < 10 && !stop; i++) {
-    log(1, "idx: %d", cdata->current_idx);
     if (cdata->current_idx + READ_SIZE > cdata->buf_size){
       if (client_increase_buffer(cdata) < 0)
         return ERROR;

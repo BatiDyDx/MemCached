@@ -36,7 +36,7 @@ int text_handler(struct ClientData *cdata) {
       op = EINVALID;
     } else {
       *ebyte = '\0';
-      log(3, "Comando completo: <%s>", cdata->buffer);
+      //log(1, "Comando completo: <%s>", cdata->buffer);
       op = text_parser(cdata->buffer, toks, lens);
     }
     
@@ -52,7 +52,8 @@ int text_handler(struct ClientData *cdata) {
   return 1;
 }
 
-enum code make_cache_request(enum code op, char *toks[3], int lens[3], char **answer, unsigned *ans_len) {
+enum code make_cache_request(enum code op, char *toks[3], int lens[3],
+                             char **answer, unsigned *ans_len) {
   const size_t stats_size = 2000;
   enum code res;
   switch (op) {
@@ -114,7 +115,7 @@ enum code text_parser(char *buf, char *toks[TEXT_MAX_TOKS], int lens[TEXT_MAX_TO
   enum code op;
   const char *delim = " \t\n";
   int ntoks = 0;
-
+  
   toks[0] = strtok(buf, delim);
   if (toks[0])
     ntoks++;
@@ -141,7 +142,7 @@ enum code text_parser(char *buf, char *toks[TEXT_MAX_TOKS], int lens[TEXT_MAX_TO
     op = EINVALID;
 
   if (op != EINVALID)
-    log(3, "Comando parseado: %d, numero de tokens: %d", op, ntoks);
+    log(3, "Comando parseado: %s, numero de tokens: %d", code_str(op), ntoks);
   else
     log(3, "Comando parseado invalido");
 	return op;

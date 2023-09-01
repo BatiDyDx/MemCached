@@ -74,8 +74,7 @@ void handle_client(struct eventloop_data eventloop, struct ClientData* cdata) {
     epoll_ctl(eventloop.epfd, EPOLL_CTL_DEL, cdata->fd, NULL);
     client_close_connection(cdata);
     return;
-  } else if (status == 1) // Mensaje enviado, limpiamos el buffer
-    client_reset_info(cdata);
+  }//client_reset_info(cdata);
   struct epoll_event event;
   event.events = EPOLLIN | EPOLLONESHOT;
   event.data.ptr = cdata;
