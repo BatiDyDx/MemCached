@@ -14,12 +14,6 @@
 #include "memcached.h"
 #include "bin_processing.h"
 
-void printBytes(char* token, uint32_t len){
-  for (uint32_t i = 0 ; i < len; i++)
-    printf("%d ",token[i]);
-  putchar('\n');
-}
-
 /* 0: todo ok, continua. -1 errores */
 int bin_handler(struct ClientData* cdata) {
   if(cdata->current_idx == 0) // ningun byte

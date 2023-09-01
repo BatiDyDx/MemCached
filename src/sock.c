@@ -86,7 +86,12 @@ int accept_clients(struct eventloop_data eventloop, char mode) {
   while ((csock = accept4(lsock, NULL, 0, SOCK_NONBLOCK)) >= 0) {
     log(2, "accept fd: %d en modo: %d", csock, mode);
     struct ClientData *cdata = client_data_init(csock, mode);
-    event.events = EPOLLIN | EPOLLONESHOT;// | EPOLLET;
+    if (!cdata) {
+      log(1, "Sin espacio para aceptar fd: %d", csock);
+      close(csock);
+      continue;
+    }
+    event.events = EPOLLIN | EPOLLONESHOT;
     event.data.ptr = cdata;
     epoll_ctl(eventloop.epfd, EPOLL_CTL_ADD, csock, &event);
   }

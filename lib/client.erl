@@ -52,11 +52,10 @@ recv_ans_data(Socket) ->
     end.
 
 start(Hostname, Port) ->
-    spawn(fun() ->
-        % TENEMOS QUE CAPTURAR ERROR DE CONEXION
-        {ok, Socket} = gen_tcp:connect(Hostname,Port,[{reuseaddr, true},{active, false},binary]),
-        client(Socket)
-    end).
+    case gen_tcp:connect(Hostname,Port,[{reuseaddr, true},{active, false},binary]) of
+      {ok, Socket} -> spawn(fun() -> client(Socket) end);
+      {error, Reason} -> Reason
+    end.
 
 process_request(Socket, Data) ->
   {Op, Cmd} = Data,

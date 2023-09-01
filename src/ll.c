@@ -31,7 +31,8 @@ uint32_t list_size() {
 }
 
 List list_init() {
-  List list = dalloc(sizeof(struct _LLNode));
+  List list = malloc(sizeof(struct _LLNode));
+  assert(list);
   if (list == NULL)
     return NULL;
   list->prev = NULL;

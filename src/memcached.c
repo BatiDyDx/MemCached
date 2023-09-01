@@ -43,21 +43,16 @@ void handle_interrupt(int sig) {
   close(eventloop.epfd);
   close(eventloop.text_sock);
   close(eventloop.bin_sock);
-  cache_destroy(cache);
   exit(EXIT_SUCCESS);
 }
 
 void handle_signals() {
-  struct sigaction s;
-  s.sa_handler = SIG_IGN;
-  if (sigaction(SIGPIPE, (const struct sigaction*) &s, NULL) < 0)
-    quit("seteo de sigaction para SIGPIPE");
-
-  s.sa_handler = handle_interrupt;
-  if (sigaction(SIGINT, (const struct sigaction*) &s, NULL) < 0)
-    quit("seteo de sigaction para SIGINT");
-  if (sigaction(SIGTERM, (const struct sigaction*) &s, NULL) < 0)
-    quit("seteo de sigaction para SIGTERM");
+  if (signal(SIGPIPE, SIG_IGN) == SIG_ERR)
+    quit("seteo de signal handler para SIGPIPE");
+  if (signal(SIGINT, handle_interrupt) == SIG_ERR)
+    quit("seteo de signal handler para SIGINT");
+  if (signal(SIGTERM, handle_interrupt) == SIG_ERR)
+    quit("seteo de signal handler para SIGTERM");
   log(3, "Configuracion de handlers de señales");
 }
 
@@ -65,9 +60,11 @@ void handle_client(struct eventloop_data eventloop, struct ClientData* cdata) {
   int status;
   log(2, "handle fd: %d modo: %d", cdata->fd, cdata->mode);
   enum IO_STATUS_CODE err = client_fill_buffer(cdata);
-  if (err == ERROR || err == CLOSED) // Cerrar
+  if (err == ERROR || err == CLOSED) { // Cerrar
+    client_close_connection(cdata);
     return;
-  else if (cdata->mode == TEXT_MODE)
+  }
+  if (cdata->mode == TEXT_MODE)
     status = text_handler(cdata);
   else if (cdata->mode == BIN_MODE)
     status = bin_handler(cdata);
@@ -80,7 +77,7 @@ void handle_client(struct eventloop_data eventloop, struct ClientData* cdata) {
   } else if (status == 1) // Mensaje enviado, limpiamos el buffer
     client_reset_info(cdata);
   struct epoll_event event;
-  event.events = EPOLLIN | EPOLLONESHOT;// | EPOLLET;
+  event.events = EPOLLIN | EPOLLONESHOT;
   event.data.ptr = cdata;
   epoll_ctl(eventloop.epfd, EPOLL_CTL_MOD, cdata->fd, &event);
 }
