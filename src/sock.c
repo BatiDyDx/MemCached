@@ -10,6 +10,8 @@
 #include "memcached.h"
 #include "sock.h"
 #include "dalloc.h"
+#include "bin_protocol.h"
+#include "text_protocol.h"
 #include "log.h"
 #include "common.h"
 #include "io.h"
@@ -86,12 +88,15 @@ int accept_clients(struct eventloop_data eventloop, char mode) {
   while ((csock = accept4(lsock, NULL, 0, SOCK_NONBLOCK)) >= 0) {
     log(1, "Nueva conexion, fd: %d en modo: %d", csock, mode);
     struct ClientData *cdata = client_data_init(csock, mode);
-    if (!cdata) {
-      log(2, "Sin espacio para aceptar fd: %d", csock);
-      close(csock);
-      continue;
-    }
-    event.events = EPOLLIN | EPOLLONESHOT;
+	if(!cdata) {
+		if(mode == TEXT_MODE)
+			answer_text_client(csock, EOOM, NULL, 0);
+		else
+			answer_bin_client(csock, EOOM, NULL, 0);
+		close(csock);
+		return -1;
+	}
+    event.events = EPOLLIN | EPOLLONESHOT;// | EPOLLET;
     event.data.ptr = cdata;
     epoll_ctl(eventloop.epfd, EPOLL_CTL_ADD, csock, &event);
   }
