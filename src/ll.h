@@ -21,9 +21,6 @@ Data data_wrap(char *key, uint64_t klen, char *value, uint64_t vlen, char mode);
 //! @brief Inicializa una lista enlazada
 List list_init();
 
-//! @brief Retorna el tamaño de un nodo en bytes
-uint32_t list_size();
-
 //! @brief Libera una lista enlazada
 void list_free(List list);
 

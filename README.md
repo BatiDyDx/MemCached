@@ -15,19 +15,14 @@ Para el compilado del programa, se puede hacer uso de la línea:
 ```
 $ make 
 ```
-Alternativamente, la compilación del progrma y la ejecución se pueden reducir en la línea:
+Alternativamente, la compilación del programa y la ejecución se pueden reducir en la línea:
 ```
 $ make run
 ```
 Como última opción, compilar el programa sin hacer uso del archivo Makefile se puede lograr compilando
 todos los archivos de la carpta ./src, resultando en la línea:
 ```
-$ gcc -o memcached src/bin_processing.c src/cache.c 
-         src/common.c src/dalloc.c src/io.c src/ll.c 
-         src/log.c src/lru.c 
-         src/memcached.c src/sock.c src/stats.c 
-         src/text_processing.c src/client_data.c 
-         -pthread
+$ gcc -o memcached src/*.c -pthread
 ```
 
 ## Uso de la memcache

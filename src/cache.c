@@ -39,7 +39,7 @@ unsigned long hash_bytes(char *bytes, uint64_t nbytes) {
 Cache cache_init(uint64_t size, uint64_t nregions) {
   Cache cache = malloc(sizeof(struct _Cache));
   assert(cache);
-  cache->buckets    = malloc(list_size() * size);
+  cache->buckets    = malloc(sizeof(List) * size);
   cache->row_locks  = malloc(sizeof(pthread_rwlock_t) * nregions);
   assert(cache->buckets && cache->row_locks);
   cache->queue      = lru_init();
@@ -89,6 +89,56 @@ void cache_update_stats(Cache cache, char mode, void (*update)(struct Stats*)) {
   pthread_mutex_unlock(lock);
 }
 
+enum code make_cache_request(Cache cache, enum code op, char prot, char *toks[2], uint32_t lens[2],
+                             char **answer, uint32_t *ans_len) {
+  const size_t stats_size = 2000;
+  enum code res;
+  switch (op) {
+      case PUT:
+        res = cache_put(cache, prot, toks[0], lens[0], toks[1], lens[1]);
+        *answer = NULL;
+        *ans_len = 0;
+        break;
+
+      case DEL:
+        res = cache_del(cache, prot, toks[0], lens[0]);
+        *answer = NULL;
+        *ans_len = 0;
+        break;
+
+      case GET:
+        res = cache_get(cache, prot, toks[0], lens[0], answer, ans_len);
+        break;
+
+      case STATS:
+        struct Stats stats_buf = stats_init();
+        res = cache_stats(cache, prot, &stats_buf);
+        if (res == OK) {
+          *answer = dalloc(stats_size);
+          if (*answer == NULL)
+            return EOOM;
+          *ans_len = format_stats(&stats_buf, *answer, stats_size);
+        } else {
+          *ans_len = 0;
+          *answer = NULL;
+        }
+        break;
+
+      case EOOM:
+      case EUNK:
+      case EINVALID:
+        res = op;
+        *answer = NULL;
+        *ans_len = 0;
+        break;
+
+      default:
+        assert(0);
+    }
+
+    return res;
+}
+
 enum code cache_get(Cache cache, char mode, char* key, unsigned klen, char **val, unsigned *vlen) {
   cache_update_stats(cache, mode, stats_inc_get);
   unsigned idx = NROW(key, klen);
@@ -101,7 +151,7 @@ enum code cache_get(Cache cache, char mode, char* key, unsigned klen, char **val
     return ENOTFOUND;
   }
   Data data = list_get_data(node);
-  if (mode == TEXT_MODE && data.mode && BIN_MODE) {
+  if (mode == TEXT_MODE && data.mode == BIN_MODE) {
     UNLOCK_ROW(idx);
     *val = NULL;
     *vlen = 0;
@@ -123,18 +173,39 @@ enum code cache_put(Cache cache, char mode, char* key, unsigned klen, char *valu
   WR_LOCK_ROW(idx);
   List node = list_search(cache->buckets[idx], key, klen);
   if (!node) {
-    Data new_data = data_wrap(key, klen, value, vlen, mode);
-    List new_node = list_insert(cache->buckets[idx], new_data);
-    if (!new_node)
+    char *key_copy, *value_copy;
+    if (!(key_copy = dalloc(klen))) {
+      UNLOCK_ROW(idx);
       return EOOM;
+    } else if (!(value_copy = dalloc(vlen))) {
+      free(key_copy);
+      UNLOCK_ROW(idx);
+      return EOOM;
+    }
+    memcpy(key_copy, key, klen);
+    memcpy(value_copy, value, vlen);
+    Data new_data = data_wrap(key_copy, klen, value_copy, vlen, mode);
+    List new_node = list_insert(cache->buckets[idx], new_data);
+    if (!new_node) {
+      free(key_copy);
+      free(value_copy);
+      UNLOCK_ROW(idx);
+      return EOOM;
+    }
     LRUNode lru_priority = lru_push(cache->queue, idx, new_node);
     list_set_lru_priority(new_node, lru_priority);
     cache_update_stats(cache, mode, stats_inc_keys);
   } else {
+    char *value_copy;
     Data data = list_get_data(node);
+    if (!(value_copy = dalloc(vlen))) {
+      UNLOCK_ROW(idx);
+      return EOOM;
+    }
     free(data.val);
+    memcpy(value_copy, value, vlen);
+    data.val = value_copy;
     data.mode = mode;
-    data.val = value;
     data.vlen = vlen;
     list_set_data(node, data);
     reset_lru_status(cache->queue, list_get_lru_priority(node));
@@ -182,7 +253,7 @@ enum code cache_stats(Cache cache, char mode, struct Stats* stats) {
 }
 
 int cache_try_dismiss(Cache cache, uint64_t idx, List data_node) {
-  if (!WR_TRYLOCK_ROW(idx)) // Casilla bloqueada
+  if (WR_TRYLOCK_ROW(idx) != 0) // Casilla bloqueada
     return 0;
   list_remove(data_node);
   list_free_node(data_node);

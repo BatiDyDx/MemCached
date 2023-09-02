@@ -20,6 +20,9 @@ Cache cache_init(uint64_t size, uint64_t nregions);
 //! @brief Libera una estructura cache
 void cache_destroy(Cache cache);
 
+enum code make_cache_request(Cache cache, enum code op, char prot, char *toks[2], uint32_t lens[2],
+                             char **answer, uint32_t *ans_len);
+
 //! @brief Recupera un dato almacenado en una cache
 //! @param[in] cache Cache en cuestión sobre la cual se realiza la operacion
 //! @param[in] mode Modo en que la llave y valor estan almacenados. Puede ser TEXT_MODE o BIN_MODE

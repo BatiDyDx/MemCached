@@ -38,7 +38,8 @@ LRUQueue lru_init() {
   assert(q);
   q->first = q->last = NULL;
   pthread_mutexattr_t attr;
-  pthread_mutexattr_init(&attr);
+  if (pthread_mutexattr_init(&attr) < 0)
+    quit("lru_init.pthread_mutexattr_init");
   pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
   assert(pthread_mutex_init(&q->lock, &attr) == 0);
   pthread_mutexattr_destroy(&attr);
@@ -90,19 +91,15 @@ void lru_remove(LRUQueue q, LRUNode node) {
     q->first = node->next;
     if (node->next)
       node->next->prev = NULL;
-  }
-  else
+  } else
     node->prev->next = node->next;
   if (q->last == node) {
     q->last = node->prev;
     if (node->prev)
       node->prev->next = NULL;
-  }
-  else {
-    assert(node->next);
-    //assert(node->prev);
+  } else
     node->next->prev = node->prev;
-  }
+
   lru_unlock(q);
 }
 

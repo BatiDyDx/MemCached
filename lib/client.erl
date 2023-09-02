@@ -1,9 +1,6 @@
 -module(client).
 -export([start/2,put/3,del/2,get/2,stats/1,exit/1]).
 
--define(PORT, 8889).
--define(PPORT, 889). % Puerto privilegiado
-
 -define(PUT, 11).
 -define(DEL, 12).
 -define(GET, 13).
@@ -25,7 +22,8 @@ end).
 -define(WAIT_RES,
 receive
     {ans, Res} -> Res;
-    closed -> closed
+    {error, closed} -> closed;
+    Error -> Error
 end).
 
 recv_ans(Socket) ->
@@ -63,7 +61,6 @@ process_request(Socket, Data) ->
     {error, Reason} -> throw(Reason);
     _ -> ok
   end,
-
   case Op of
     put -> Ans = recv_ans(Socket);
     del -> Ans = recv_ans(Socket);
@@ -71,10 +68,10 @@ process_request(Socket, Data) ->
                 {ok, Res} -> Ans = {ok, binary_to_list(Res)};
                 MemError -> Ans = MemError
               end;
-    get -> case recv_ans_data(Socket) of
-            {ok, Res} -> Ans = {ok, binary_to_term(Res)};
-            MemError -> Ans = MemError
-        end
+    get  -> case recv_ans_data(Socket) of
+              {ok, Res} -> Ans = {ok, binary_to_term(Res)};
+              MemError -> Ans = MemError
+            end
   end,
   Ans.
 
@@ -85,7 +82,8 @@ client(Socket) ->
           Ans -> Pid ! {ans, Ans},
           client(Socket)
         catch
-          throw:_ -> close_conn(Socket)
+          throw:Reason -> close_conn(Socket),
+                          Pid ! {error, Reason}
         end;
       exit -> close_conn(Socket)
     end.
@@ -102,26 +100,38 @@ put(Id, Key, Value) ->
     Vlen = byte_size(Bval),
     Cmd = <<?PUT:8,Klen:32/big,Bkey/binary,Vlen:32/big,Bval/binary>>,
     Id ! {req, self(), {put, Cmd}},
-    ?WAIT_RES.
+    IsOpen = is_process_alive(Id),
+    if  IsOpen -> ?WAIT_RES;
+        true -> closed
+    end.
 
 get(Id, Key) ->
     Bkey = term_to_binary(Key),
     Klen = byte_size(Bkey),
     Cmd = <<?GET:8,Klen:32/big,Bkey/binary>>,
     Id ! {req, self(), {get, Cmd}},
-    ?WAIT_RES.
+    IsOpen = is_process_alive(Id),
+    if  IsOpen -> ?WAIT_RES;
+        true -> closed
+    end.
 
 del(Id, Key) ->
     Bkey = term_to_binary(Key),
     Klen = byte_size(Bkey),
     Cmd = <<?DEL:8,Klen:32/big,Bkey/binary>>,
     Id ! {req, self(), {del, Cmd}},
-    ?WAIT_RES.
+    IsOpen = is_process_alive(Id),
+    if  IsOpen -> ?WAIT_RES;
+        true -> closed
+    end.
 
 stats(Id) ->
     Cmd = <<?STATS:8>>,
     Id ! {req, self(), {stats, Cmd}},
-    ?WAIT_RES.
+    IsOpen = is_process_alive(Id),
+    if  IsOpen -> ?WAIT_RES;
+        true -> closed
+    end.
 
 exit(Id) ->
     Id ! exit,

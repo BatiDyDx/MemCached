@@ -26,15 +26,9 @@ Data data_wrap(char *key, uint64_t klen, char *val, uint64_t vlen, char mode) {
   return data;
 }
 
-uint32_t list_size() {
-  return sizeof(struct _LLNode);
-}
-
 List list_init() {
   List list = malloc(sizeof(struct _LLNode));
   assert(list);
-  if (list == NULL)
-    return NULL;
   list->prev = NULL;
   list->next = NULL;
   return list;
