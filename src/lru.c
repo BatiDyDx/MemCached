@@ -134,5 +134,6 @@ int lru_dismiss(Cache cache) {
     i++;
   }
   lru_unlock(q);
+  log(2, "Desalojo de %d datos", i);
   return i;
 }

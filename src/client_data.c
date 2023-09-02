@@ -5,7 +5,7 @@
 #include "dalloc.h"
 
 struct ClientData* listen_data_init(int lsock) {
-  struct ClientData* cdata = dalloc(sizeof(struct ClientData));
+  struct ClientData* cdata = malloc(sizeof(struct ClientData));
   assert(cdata);
   cdata->fd = lsock;
   return cdata;
@@ -13,7 +13,8 @@ struct ClientData* listen_data_init(int lsock) {
 
 struct ClientData* client_data_init(int csock, int mode) {
   struct ClientData* cdata = dalloc(sizeof(struct ClientData));
-  assert(cdata);
+  if (!cdata)
+    return NULL;
 	cdata->buf_size = BUFFER_SIZE;
 	cdata->buffer = dalloc(cdata->buf_size);
   if (!cdata->buffer) { // No se pudo alocar buffer
@@ -29,7 +30,7 @@ struct ClientData* client_data_init(int csock, int mode) {
 enum IO_STATUS_CODE client_fill_buffer(struct ClientData *cdata) {
   long rb;
   int stop = 0;
-  while (!stop) {
+  for (int i = 0; i < 10 && !stop; i++) {
     if (cdata->current_idx + READ_SIZE > cdata->buf_size){
       if (client_increase_buffer(cdata) < 0)
         return ERROR;

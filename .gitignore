@@ -4,6 +4,7 @@ memcached
 server
 
 .vscode
+.desp.mk
 
 # Prerequisites
 *.d

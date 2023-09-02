@@ -5,7 +5,7 @@
 #include "io.h"
 
 #define READ_SIZE (1 << 12)
-#define BUFFER_SIZE (3 * READ_SIZE)
+#define BUFFER_SIZE (READ_SIZE + 10)
 
 // La estructura mantiene un buffer para almacenar peticiones hasta poder ser
 // procesadas, junto con informacion del cliente

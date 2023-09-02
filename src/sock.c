@@ -86,13 +86,14 @@ int accept_clients(struct eventloop_data eventloop, char mode) {
   struct epoll_event event;
   int lsock = mode == TEXT_MODE ? eventloop.text_sock : eventloop.bin_sock;
   while ((csock = accept4(lsock, NULL, 0, SOCK_NONBLOCK)) >= 0) {
-    log(2, "accept fd: %d en modo: %d", csock, mode);
+    log(1, "Nueva conexion, fd: %d en modo: %d", csock, mode);
     struct ClientData *cdata = client_data_init(csock, mode);
 	if(!cdata) {
 		if(mode == TEXT_MODE)
 			answer_text_client(csock, EOOM, NULL, 0);
 		else
 			answer_bin_client(csock, EOOM, NULL, 0);
+		close(csock);
 		return -1;
 	}
     event.events = EPOLLIN | EPOLLONESHOT;// | EPOLLET;

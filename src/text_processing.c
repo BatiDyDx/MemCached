@@ -14,85 +14,108 @@
 #include "dalloc.h"
 #include "stats.h"
 
-static inline int min(int x, int y) {
-  return x <= y ? x : y;
-}
+static enum code make_cache_request(enum code op, char *toks[3], int lens[3], char **answer, unsigned *ans_len);
 
 /* 0: todo ok, continua. -1 errores */
 int text_handler(struct ClientData *cdata) {
-  long nread;
   char *ebyte; // end byte
   char *toks[3];
   int lens[3];
   enum code op, res;
   int fd = cdata->fd;
-  nread = min(cdata->current_idx, TEXT_LIMIT_SIZE);
-  ebyte = memchr(cdata->buffer, '\n', nread);
+  unsigned req_len; // Longitud de la peticion a procesar
+  char *answer;
+  unsigned ans_len;
 
-  if (!ebyte && nread == 2048) { // Mensaje muy largo
-    log(3, "Comando invalido: es muy largo");
-    op = EINVALID;
-  } else if (!ebyte) { // Mensaje incompleto 
-    return 0;
-  } else {
-    *ebyte = '\0';
-    log(3, "Comando completo: <%s>", cdata->buffer);
-    op = text_parser(cdata->buffer, toks, lens);
-  }
-  fd_flush(cdata->fd); // El restante no lo queremos
-  switch (op) {
-    case PUT:
-      char *key, *value;
-      key = dalloc(sizeof(char) * lens[1]);
-      if (!key)
-        return -1;
-      value = dalloc(sizeof(char) * lens[2]);
-      if (!value)
-        return -1;
-      memcpy(key, toks[1], lens[1]);
-      memcpy(value, toks[2], lens[2]);
-      res = cache_put(cache, TEXT_MODE, key, lens[1], value, lens[2]);
-      answer_text_client(fd, res, NULL, 0);
-      break;
-
-    case DEL:
-      res = cache_del(cache, TEXT_MODE, toks[1], lens[1]);
-      answer_text_client(fd, res, NULL, 0);
-      break;
-
-    case GET:
-      char *val;
-      unsigned vlen;
-      res = cache_get(cache, TEXT_MODE, toks[1], lens[1], &val, &vlen);
-      answer_text_client(fd, res, val, vlen);
-      break;
-
-    case STATS:
-      struct Stats stats_buf = stats_init();
-      char buf[1000]; // Tamaño arbitrario, podria ser mas chico
-      int len;
-      enum code res = cache_stats(cache, TEXT_MODE, &stats_buf);
-      if (res == OK)
-        len = format_stats(&stats_buf, buf, 1000);
-      answer_text_client(fd, res, buf, len);
-      break;
-
-    case EINVALID:
-      answer_text_client(fd, EINVALID, NULL, 0);
-      break;
-
-    default:
-      assert(0);
-      break;
+  while ((ebyte = memchr(cdata->buffer, '\n', cdata->current_idx))) {  
+    if (!ebyte) // Mensaje incompleto
+      return 0;
+    req_len = ebyte - cdata->buffer;
+    if (req_len >= TEXT_LIMIT_SIZE) { // Mensaje muy largo
+      log(3, "Comando invalido: es muy largo");
+      op = EINVALID;
+    } else {
+      *ebyte = '\0';
+      //log(1, "Comando completo: <%s>", cdata->buffer);
+      op = text_parser(cdata->buffer, toks, lens);
+    }
+    
+    res = make_cache_request(op, toks, lens, &answer, &ans_len);
+    answer_text_client(fd, res, answer, ans_len);
+    if (answer)
+      free(answer);
+    
+    unsigned rem = cdata->current_idx - (req_len + 1);
+    memmove(cdata->buffer, cdata->buffer + (req_len + 1), rem);
+    cdata->current_idx -= req_len + 1;
   }
   return 1;
+}
+
+enum code make_cache_request(enum code op, char *toks[3], int lens[3],
+                             char **answer, unsigned *ans_len) {
+  const size_t stats_size = 2000;
+  enum code res;
+  switch (op) {
+      case PUT:
+        char *key, *value;
+        key = dalloc(sizeof(char) * lens[1]);
+        value = dalloc(sizeof(char) * lens[2]);
+        if (!key || !value) {
+          *answer = NULL;
+          *ans_len = 0;
+          return EOOM;
+        }
+        memcpy(key, toks[1], lens[1]);
+        memcpy(value, toks[2], lens[2]);
+        res = cache_put(cache, TEXT_MODE, key, lens[1], value, lens[2]);
+        *answer = NULL;
+        *ans_len = 0;
+        break;
+
+      case DEL:
+        res = cache_del(cache, TEXT_MODE, toks[1], lens[1]);
+        *answer = NULL;
+        *ans_len = 0;
+        break;
+
+      case GET:
+        res = cache_get(cache, TEXT_MODE, toks[1], lens[1], answer, ans_len);
+        break;
+
+      case STATS:
+        struct Stats stats_buf = stats_init();
+        res = cache_stats(cache, TEXT_MODE, &stats_buf);
+        if (res == OK) {
+          *answer = dalloc(stats_size);
+          if (*answer == NULL)
+            return EOOM;
+          *ans_len = format_stats(&stats_buf, *answer, stats_size);
+        } else {
+          *ans_len = 0;
+          *answer = NULL;
+        }
+        break;
+
+      case EINVALID:
+        res = EINVALID;
+        *answer = NULL;
+        *ans_len = 0;
+        break;
+
+      default:
+        assert(0);
+        break;
+    }
+
+    return res;
 }
 
 enum code text_parser(char *buf, char *toks[TEXT_MAX_TOKS], int lens[TEXT_MAX_TOKS]) {
   enum code op;
   const char *delim = " \t\n";
   int ntoks = 0;
-
+  
   toks[0] = strtok(buf, delim);
   if (toks[0])
     ntoks++;
@@ -119,7 +142,7 @@ enum code text_parser(char *buf, char *toks[TEXT_MAX_TOKS], int lens[TEXT_MAX_TO
     op = EINVALID;
 
   if (op != EINVALID)
-    log(3, "Comando parseado: %d, numero de tokens: %d", op, ntoks);
+    log(3, "Comando parseado: %s, numero de tokens: %d", code_str(op), ntoks);
   else
     log(3, "Comando parseado invalido");
 	return op;
@@ -135,13 +158,11 @@ int answer_text_client(int fd, enum code res, char *data, uint64_t len) {
     return 0;
   }
   log(2, "Respuesta %s a fd %d", op_string, fd);
-  if (write(fd, op_string, strlen(op_string)) < 0)
-    return -1;
+  write(fd, op_string, strlen(op_string));
   if (data) {
     c = ' ';
     write(fd, &c, 1);
-    if (write(fd, data, len) < 0)
-      return -1;
+    write(fd, data, len);
   }
   c = '\n';
   write(fd, &c, 1);
