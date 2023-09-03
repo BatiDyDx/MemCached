@@ -76,7 +76,7 @@ enum code text_parser(char *buf, char *toks[TEXT_MAX_TOKS-1], uint32_t lens[TEXT
   else if (ntoks == 3 && !strcmp(op_str, code_str(PUT)))
     op = PUT;
   else
-    op = EINVALID;
+    op = EUNK;
 
   if (op != EINVALID)
     log(3, "Comando parseado: %s, numero de tokens: %d", code_str(op), ntoks);

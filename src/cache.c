@@ -110,7 +110,7 @@ enum code make_cache_request(Cache cache, enum code op, char prot, char *toks[2]
         res = cache_get(cache, prot, toks[0], lens[0], answer, ans_len);
         break;
 
-      case STATS:
+      case STATS: ;
         struct Stats stats_buf = stats_init();
         res = cache_stats(cache, prot, &stats_buf);
         if (res == OK) {
@@ -124,8 +124,11 @@ enum code make_cache_request(Cache cache, enum code op, char prot, char *toks[2]
         }
         break;
 
-      case EOOM:
       case EUNK:
+        res = op;
+        *answer = NULL;
+        *ans_len = 0;
+        break;
       case EINVALID:
         res = op;
         *answer = NULL;

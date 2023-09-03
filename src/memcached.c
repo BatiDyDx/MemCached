@@ -32,9 +32,10 @@ struct eventloop_data eventloop;
 // Setea el limite de uso de memoria
 void limit_mem(rlim_t lim) {
   struct rlimit rl;
+  log(2,"variable lim %d", lim);
   rl.rlim_cur = lim;
   rl.rlim_max = lim;
-  setrlimit(RLIMIT_DATA, (const struct rlimit*) &rl);
+  assert(!setrlimit(RLIMIT_DATA, (const struct rlimit*) &rl));
   log(3, "Seteo limite de memoria a %luMB", lim / (1 << 20));
 }
 
@@ -141,6 +142,7 @@ int get_config(int argc, char** argv, struct Config *config) {
     switch (opt) {
       case 'm':
         config->memsize = atoi(optarg);
+        log(2, "memsize actualizado: %d",config->memsize);
         break;
       case 'n':
         config->nthreads = atoi(optarg);

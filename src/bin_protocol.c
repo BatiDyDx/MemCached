@@ -45,7 +45,7 @@ int bin_parser(char *buf, uint64_t size, enum code *op, char *toks[], uint32_t *
   if (size == 0) // ningun byte
       return 0;
     if (!valid_rq(buf[0])) { // primer byte del buffer
-      *op = EINVALID;
+      *op = EUNK;
       return 1;
     }
   *op = buf[0];
@@ -72,7 +72,7 @@ int bin_parser(char *buf, uint64_t size, enum code *op, char *toks[], uint32_t *
     lens[i] = ntohl(lens[i]); // cambiar de big endian a little endian
     idx += 4;
     if(size - idx < lens[i])
-      return 0; // no hay suficientes byes en el socket para la data
+      return 0; // no hay suficientes bytes en el socket para la data
     toks[i] = buf + idx;
     idx += lens[i];
   }
