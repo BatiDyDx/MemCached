@@ -20,7 +20,6 @@
 #include "sock.h"
 
 Cache cache;
-
 struct Config {
   unsigned nthreads;
   rlim_t memsize;
@@ -75,7 +74,7 @@ void handle_client(struct eventloop_data eventloop, struct ClientData* cdata) {
     epoll_ctl(eventloop.epfd, EPOLL_CTL_DEL, cdata->fd, NULL);
     client_close_connection(cdata);
     return;
-  }//client_reset_info(cdata);
+  }
   struct epoll_event event;
   event.events = EPOLLIN | EPOLLONESHOT;
   event.data.ptr = cdata;
@@ -142,7 +141,6 @@ int get_config(int argc, char** argv, struct Config *config) {
     switch (opt) {
       case 'm':
         config->memsize = atoi(optarg);
-        log(2, "memsize actualizado: %d",config->memsize);
         break;
       case 'n':
         config->nthreads = atoi(optarg);

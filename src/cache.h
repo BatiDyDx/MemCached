@@ -20,6 +20,20 @@ Cache cache_init(uint64_t size, uint64_t nregions);
 //! @brief Libera una estructura cache
 void cache_destroy(Cache cache);
 
+//! @brief Interfaz para manejar los pedidos a la cache desde los distintos clientes.
+//! @param[in] cache Cache en la cual se realizan las operaciones.
+//! @param[in] op Operación a realizar por en la cache.
+//! @param[in] prot Protocolo del cliente que hizo el pedido.
+//! @param[in] toks Argumentos del comando ingresado.
+//! @param[in] lens Longitudes de los argumentos del comando ingresado.
+//! @param[out] answer Respuesta de la operación realizada en la cache. 
+//! @param[out] ans_len Longitud de la respuesta.
+//! @return Código de operación según el resultado de la operacion:
+//! OK si la operación se realizó con éxito
+//! EUNK si la operación ingresada no coincide con ninguna de las operaciones disponibles.
+//! EINVALID si la operación ingresada no fue correctamente realizada.
+//! EOOM si no hay memoria disponible.
+//! ENOTFOUND (para operaciones GET y DEL) si la clave a buscar no se encuentra en la cache.
 enum code make_cache_request(Cache cache, enum code op, char prot, char *toks[2], uint32_t lens[2],
                              char **answer, uint32_t *ans_len);
 

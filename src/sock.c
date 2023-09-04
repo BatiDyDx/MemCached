@@ -50,7 +50,7 @@ void make_bindings(int *text_sock, int *bin_sock) {
 	int text_port, bin_port;
 	uid_t uid = getuid(); // consegimos el uid del proceso
 	if (uid == 0) {  
-		// se ejecuto desde root
+		// se ejecuto usando sudo
 		// conexion con privilegios
 		text_port = 888;
 		bin_port  = 889;
@@ -70,9 +70,9 @@ void make_bindings(int *text_sock, int *bin_sock) {
 		quit("mk_tcp_sock.bin");
 
 	if (uid == 0) {
-		// en root, bajamos privilegios
+		// en sudo, bajamos privilegios
 		char *suid = getenv("SUDO_UID");
-		if (suid == NULL)
+		if (suid == NULL) // se ejecuto desde root
 			quit("getenv");
 		if (setuid(atoi(suid)) != 0)
 			quit("setuid");

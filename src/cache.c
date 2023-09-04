@@ -47,6 +47,7 @@ Cache cache_init(uint64_t size, uint64_t nregions) {
   cache->bin_stats  = stats_init();
   cache->nregions   = nregions;
   cache->size       = size;
+
   if (pthread_mutex_init(&cache->ts_lock, NULL) < 0)
     quit("Inicializado lock para estadisticas de texto");
   if (pthread_mutex_init(&cache->bs_lock, NULL) < 0)
@@ -129,6 +130,7 @@ enum code make_cache_request(Cache cache, enum code op, char prot, char *toks[2]
         *answer = NULL;
         *ans_len = 0;
         break;
+        
       case EINVALID:
         res = op;
         *answer = NULL;
