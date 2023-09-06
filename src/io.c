@@ -6,21 +6,29 @@
 #include <unistd.h>
 #include <errno.h>
 
-enum IO_STATUS_CODE fd_flush(int fd) {
-  char buf[1024];
-  int rc;
-  while ((rc = read(fd, buf, 1024)) >= 0);
-  log(3, "Flush al fd %d", fd);
-  if (rc < 0 && (errno == EAGAIN || errno == EWOULDBLOCK))
-		return EMPTY;
-	if (rc == 0)
-		return CLOSED;
-  return ERROR;
-}
-
 void usage(char *name) {
   fprintf(stderr, "Uso: %s [-n hilos] [-m memoria] [-c celdas] [-r regiones]", name);
   exit(EXIT_FAILURE);
 }
 
+
+int secure_write(int fd, const void* buffer, size_t n){
+  ssize_t cant_written;
+  size_t total_written;
+
+  const char* buf = buffer;
+
+  for(total_written = 0; total_written < n;){
+    cant_written = write(fd, buffer, n);
+
+    if(cant_written < 0 && errno == EINTR) // lectura interrumpida
+      continue;
+    else
+      return -1; // error
+    
+    buf = buf + cant_written;
+    total_written += cant_written;
+  }
+  return total_written;
+}
 

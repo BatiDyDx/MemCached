@@ -40,7 +40,7 @@ enum IO_STATUS_CODE client_fill_buffer(struct ClientData *cdata) {
     }
 
     rb = read(cdata->fd, cdata->buffer + cdata->current_idx, READ_SIZE);
-    log(3, "Leidos %d bytes de fd %d", rb, cdata->fd);
+    // log(3, "Leidos %d bytes de fd %d", rb, cdata->fd);
     if (rb < READ_SIZE)
       stop = 1;
     if (rb > 0)
@@ -54,7 +54,7 @@ enum IO_STATUS_CODE client_fill_buffer(struct ClientData *cdata) {
 }
 
 int client_increase_buffer(struct ClientData *cdata) {
-  log(3, "Realloc de buffer para fd %d", cdata->fd);
+  // log(3, "Realloc de buffer para fd %d", cdata->fd);
   cdata->buffer = drealloc(cdata->buffer, cdata->buf_size, BUFFER_SIZE);
   cdata->buf_size += BUFFER_SIZE;
   if (!cdata->buffer) {
@@ -67,24 +67,8 @@ int client_increase_buffer(struct ClientData *cdata) {
   return 0;
 }
 
-int client_reset_info(struct ClientData* cdata) {
-  log(3, "Reinicio de buffer para fd %d", cdata->fd);
-  free(cdata->buffer);
-  cdata->current_idx = 0;
-  cdata->buf_size = BUFFER_SIZE;
-  cdata->buffer = dalloc(cdata->buf_size);
-  if (!cdata->buffer) {
-    if(cdata->mode == TEXT_MODE) 
-        answer_text_client(cdata->fd, EOOM, NULL, 0);
-      else
-        answer_bin_client(cdata->fd, EOOM, NULL, 0);
-    return -1;
-    }
-  return 0;
-}
-
 void client_close_connection(struct ClientData *cdata) {
-  log(1, "Cierre de conexion con el fd: %d", cdata->fd);
+  // log(1, "Cierre de conexion con el fd: %d", cdata->fd);
   close(cdata->fd);
   free(cdata->buffer);
   free(cdata);

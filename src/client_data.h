@@ -36,12 +36,6 @@ enum IO_STATUS_CODE client_fill_buffer(struct ClientData *cdata);
 //! @return -1 si no se pudo alojar memoria, 0 si todo ok
 int client_increase_buffer(struct ClientData *cdata);
 
-//! @brief Restaura la estructura a su configuracion inicial (tambien achica el
-//! buffer al tamaño inicial). La idea es reiniciar la informacion almacenada
-//! de un cliente 
-//! @return -1 si no se pudo alojar memoria, 0 si todo ok
-int client_reset_info(struct ClientData* cdata);
-
 //! @brief Cierra la conexion con un cliente y libera la estructura
 void client_close_connection(struct ClientData *cdata);
 
