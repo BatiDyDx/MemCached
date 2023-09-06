@@ -14,13 +14,18 @@
 #include "dalloc.h"
 #include "stats.h"
 
+// static void printString(char *s, unsigned len) {
+//   for (unsigned i = 0; i < len; i++, s++)
+//     printf("%c: %d\n", *s, (int) *s);
+//   putchar('\n');
+//}
+
 /* 0: todo ok, continua. -1 errores */
 int text_handler(struct ClientData *cdata) {
   char *ebyte; // end byte
-  char *toks[TEXT_MAX_TOKS - 1];
-  uint32_t lens[TEXT_MAX_TOKS - 1];
+  char *toks[TEXT_MAX_TOKS];
+  uint32_t lens[TEXT_MAX_TOKS];
   enum code op, res;
-  int fd = cdata->fd;
   unsigned req_len; // Longitud de la peticion a procesar
   char *answer;
   uint32_t ans_len;
@@ -32,12 +37,11 @@ int text_handler(struct ClientData *cdata) {
       op = EINVALID;
     } else {
       *ebyte = '\0';
-      log(3, "Comando completo: <%s>", cdata->buffer);
+      log(-1, "Comando completo: <%s>", cdata->buffer);
       op = text_parser(cdata->buffer, toks, lens);
     }
-    
     res = make_cache_request(cache, op, TEXT_MODE, toks, lens, &answer, &ans_len);
-    answer_text_client(fd, res, answer, ans_len);
+    answer_text_client(cdata->fd, res, answer, ans_len);
     if (answer)
       free(answer);
     
@@ -45,29 +49,29 @@ int text_handler(struct ClientData *cdata) {
     memmove(cdata->buffer, cdata->buffer + req_len, rem);
     cdata->current_idx -= req_len;
   }
-  return 1;
+  return 0;
 }
 
 enum code text_parser(char *buf, char *toks[TEXT_MAX_TOKS-1], uint32_t lens[TEXT_MAX_TOKS-1]) {
   enum code op;
-  const char *delim = " \t\n";
+  const char *delim = " \t";
   int ntoks = 0;
-  char *op_str;
+  char *op_str, *save_ptr = NULL;
 
-  op_str = strtok(buf, delim);
+  op_str = strtok_r(buf, delim, &save_ptr);
   if (op_str)
     ntoks++;
   for (int i = 0; i < TEXT_MAX_TOKS - 1; i++) {
-    toks[i] = strtok(NULL, delim);
+    toks[i] = strtok_r(NULL, delim, &save_ptr);
     if (!toks[i])
       break;
     lens[i] = strlen(toks[i]);
     ntoks++;
   }
 
-  if (strtok(NULL, buf)) // Hay mas de 3 argumentos
+  if (strtok_r(NULL, delim, &save_ptr)) // Hay mas de 3 argumentos
     op = EINVALID;
-  else if (ntoks == 1 && !strcmp(op_str, code_str(STATS)))
+  if (ntoks == 1 && !strcmp(op_str, code_str(STATS)))
     op = STATS;
   else if (ntoks == 2 && !strcmp(op_str, code_str(GET)))
     op = GET;
@@ -78,10 +82,12 @@ enum code text_parser(char *buf, char *toks[TEXT_MAX_TOKS-1], uint32_t lens[TEXT
   else
     op = EUNK;
 
-  if (op != EINVALID)
-    log(3, "Comando parseado: %s, numero de tokens: %d", code_str(op), ntoks);
+  if (op == EINVALID)
+    log(1, "Comando parseado invalido");
+  else if (op == EUNK)
+    log(1, "Comando parseado desconocido");
   else
-    log(3, "Comando parseado invalido");
+    log(3, "Comando parseado: %s, numero de tokens: %d", code_str(op), ntoks);
 	return op;
 }
 

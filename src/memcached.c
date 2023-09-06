@@ -31,11 +31,11 @@ struct eventloop_data eventloop;
 // Setea el limite de uso de memoria
 void limit_mem(rlim_t lim) {
   struct rlimit rl;
-  log(2,"variable lim %d", lim);
-  rl.rlim_cur = lim;
-  rl.rlim_max = lim;
-  assert(!setrlimit(RLIMIT_DATA, (const struct rlimit*) &rl));
-  log(3, "Seteo limite de memoria a %luMB", lim / (1 << 20));
+  rl.rlim_cur = lim * (1 << 20);
+  rl.rlim_max = lim * (1 << 20);
+  if (setrlimit(RLIMIT_DATA, (const struct rlimit*) &rl) < 0)
+    quit("setrlimit");
+  log(3, "Seteo limite de memoria a %luMB", lim);
 }
 
 void handle_interrupt(int sig) {
@@ -61,6 +61,7 @@ void handle_client(struct eventloop_data eventloop, struct ClientData* cdata) {
   log(2, "handle fd: %d modo: %d", cdata->fd, cdata->mode);
   enum IO_STATUS_CODE err = client_fill_buffer(cdata);
   if (err == ERROR || err == CLOSED) { // Cerrar
+    epoll_ctl(eventloop.epfd, EPOLL_CTL_DEL, cdata->fd, NULL);
     client_close_connection(cdata);
     return;
   }
