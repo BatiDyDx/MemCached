@@ -96,7 +96,7 @@ int accept_clients(struct eventloop_data eventloop, char mode) {
 		close(csock);
 		return -1;
 	}
-    event.events = EPOLLIN | EPOLLONESHOT;// | EPOLLET;
+    event.events = EPOLLIN | EPOLLONESHOT;
     event.data.ptr = cdata;
     epoll_ctl(eventloop.epfd, EPOLL_CTL_ADD, csock, &event);
   }
