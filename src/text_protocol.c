@@ -32,6 +32,7 @@ int text_handler(struct ClientData *cdata) {
       op = EINVALID;
     } else {
       *ebyte = '\0';
+      printf("fd =  %d | comando completo: <%s>\n",cdata->fd,cdata->buffer);
       log(3, "Comando completo: <%s>", cdata->buffer);
       op = text_parser(cdata->buffer, toks, lens);
     }
@@ -53,31 +54,34 @@ enum code text_parser(char *buf, char *toks[TEXT_MAX_TOKS-1], uint32_t lens[TEXT
   const char *delim = " \t\n";
   int ntoks = 0;
   char *op_str;
+  char* saveptr = NULL;
 
-  op_str = strtok(buf, delim);
+  op_str = strtok_r(buf, delim, &saveptr);
   if (op_str)
     ntoks++;
   for (int i = 0; i < TEXT_MAX_TOKS - 1; i++) {
-    toks[i] = strtok(NULL, delim);
+    toks[i] = strtok_r(NULL, delim, &saveptr);
     if (!toks[i])
       break;
     lens[i] = strlen(toks[i]);
     ntoks++;
   }
 
-  if (strtok(NULL, buf)) // Hay mas de 3 argumentos
+  op = EUNK;
+  if (strtok_r(NULL, buf,&saveptr)) // Hay mas de 3 argumentos
     op = EINVALID;
-  else if (ntoks == 1 && !strcmp(op_str, code_str(STATS)))
-    op = STATS;
-  else if (ntoks == 2 && !strcmp(op_str, code_str(GET)))
-    op = GET;
-  else if (ntoks == 2 && !strcmp(op_str, code_str(DEL)))
-    op = DEL;
-  else if (ntoks == 3 && !strcmp(op_str, code_str(PUT)))
-    op = PUT;
-  else
-    op = EUNK;
-
+  else if (!strcmp(op_str, code_str(STATS))){
+    op = ntoks == 1 ? STATS : EINVALID;
+  }
+  else if (!strcmp(op_str, code_str(GET))){
+    op = ntoks == 2 ? GET : EINVALID;
+  }
+  else if (!strcmp(op_str, code_str(DEL))){
+    op = ntoks == 2 ? DEL : EINVALID;
+  }
+  else if (!strcmp(op_str, code_str(PUT))){
+    op = ntoks == 3 ? PUT : EINVALID;
+  }
   if (op != EINVALID)
     log(3, "Comando parseado: %s, numero de tokens: %d", code_str(op), ntoks);
   else
@@ -91,15 +95,15 @@ int answer_text_client(int fd, enum code res, char *data, uint64_t len) {
   // Bytes totales a escribir
   if (len + strlen(op_string) > TEXT_LIMIT_SIZE) {
     write(fd, "EBIG\n", 5);
-    log(2, "Respuesta %s a fd %d", "EBIG\n", fd);
+    // log(2, "Respuesta %s a fd %d", "EBIG\n", fd);
     return 0;
   }
-  log(2, "Respuesta %s a fd %d", op_string, fd);
-  write(fd, op_string, strlen(op_string));
+  // log(2, "Respuesta %s a fd %d", op_string, fd);
+  secure_write(fd, op_string, strlen(op_string));
   if (data) {
     c = ' ';
     write(fd, &c, 1);
-    write(fd, data, len);
+    secure_write(fd, data, len);
   }
   c = '\n';
   write(fd, &c, 1);

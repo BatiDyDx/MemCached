@@ -57,7 +57,7 @@ Cache cache_init(uint64_t size, uint64_t nregions) {
       quit("Inicializado de lock para region de cache");
   for (uint32_t i = 0; i < size; i++)
     cache->buckets[i] = list_init();
-  log(2, "Inicializado de cache con %lu casillas y %lu regiones", size, nregions);
+  // log(2, "Inicializado de cache con %lu casillas y %lu regiones", size, nregions);
   return cache;
 }
 
@@ -90,30 +90,30 @@ void cache_update_stats(Cache cache, char mode, void (*update)(struct Stats*)) {
   pthread_mutex_unlock(lock);
 }
 
-enum code make_cache_request(Cache cache, enum code op, char prot, char *toks[2], uint32_t lens[2],
+enum code make_cache_request(Cache cache, enum code op, char mode, char *toks[2], uint32_t lens[2],
                              char **answer, uint32_t *ans_len) {
   const size_t stats_size = 2000;
   enum code res;
   switch (op) {
       case PUT:
-        res = cache_put(cache, prot, toks[0], lens[0], toks[1], lens[1]);
+        res = cache_put(cache, mode, toks[0], lens[0], toks[1], lens[1]);
         *answer = NULL;
         *ans_len = 0;
         break;
 
       case DEL:
-        res = cache_del(cache, prot, toks[0], lens[0]);
+        res = cache_del(cache, mode, toks[0], lens[0]);
         *answer = NULL;
         *ans_len = 0;
         break;
 
       case GET:
-        res = cache_get(cache, prot, toks[0], lens[0], answer, ans_len);
+        res = cache_get(cache, mode, toks[0], lens[0], answer, ans_len);
         break;
 
       case STATS: ;
         struct Stats stats_buf = stats_init();
-        res = cache_stats(cache, prot, &stats_buf);
+        res = cache_stats(cache, mode, &stats_buf);
         if (res == OK) {
           *answer = dalloc(stats_size);
           if (*answer == NULL)
