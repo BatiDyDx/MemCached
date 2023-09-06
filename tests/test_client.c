@@ -60,16 +60,16 @@ void* client_thread(void* a){
 		int ipaddrnum = i / 10000 + 10;
 		char ipaddr[32];
 
-		//memset(&clientaddr, 0, sizeof(clientaddr));
-		//clientaddr.sin_family = AF_INET;
-		//clientaddr.sin_port = htons(portnum);
-		//sprintf(ipaddr, "127.0.0.%d", ipaddrnum);
-		//inet_pton(AF_INET, ipaddr, &clientaddr.sin_addr);
-		//rc = bind(sock[i], (struct sockaddr *)&clientaddr, sizeof(clientaddr));
-		//if (rc < 0) {
-		//	perror("ECHOCLNT: Error llamando a bind()");
-		//	return 	NULL;
-		//}
+		memset(&clientaddr, 0, sizeof(clientaddr));
+		clientaddr.sin_family = AF_INET;
+		clientaddr.sin_port = htons(portnum);
+		sprintf(ipaddr, "127.0.0.%d", ipaddrnum);
+		inet_pton(AF_INET, ipaddr, &clientaddr.sin_addr);
+		rc = bind(sock[i], (struct sockaddr *)&clientaddr, sizeof(clientaddr));
+		if (rc < 0) {
+			perror("ECHOCLNT: Error llamando a bind()");
+			return 	NULL;
+		}
 	
 		rc = connect(sock[i], (struct sockaddr *)&servaddr, sizeof(servaddr));
 		if (rc < 0) {
