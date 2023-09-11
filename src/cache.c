@@ -57,7 +57,7 @@ Cache cache_init(uint64_t size, uint64_t nregions) {
       quit("Inicializado de lock para region de cache");
   for (uint32_t i = 0; i < size; i++)
     cache->buckets[i] = list_init();
-  // log(2, "Inicializado de cache con %lu casillas y %lu regiones", size, nregions);
+  log(2, "Inicializado de cache con %lu casillas y %lu regiones", size, nregions);
   return cache;
 }
 
@@ -164,8 +164,11 @@ enum code cache_get(Cache cache, char mode, char* key, unsigned klen, char **val
   }
   *vlen = data.vlen;
   *val = dalloc(*vlen);
-  if (*val == NULL)
+  if (*val == NULL){
+    *vlen = 0;
+    UNLOCK_ROW(idx);
     return EOOM;
+  }
   memcpy(*val, data.val, *vlen); // Copiamos para proteger la informacion
   reset_lru_status(cache_get_lru_queue(cache), list_get_lru_priority(node));
   UNLOCK_ROW(idx);

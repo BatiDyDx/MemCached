@@ -14,12 +14,6 @@
 #include "dalloc.h"
 #include "stats.h"
 
-// static void printString(char *s, unsigned len) {
-//   for (unsigned i = 0; i < len; i++, s++)
-//     printf("%c: %d\n", *s, (int) *s);
-//   putchar('\n');
-//}
-
 /* 0: todo ok, continua. -1 errores */
 int text_handler(struct ClientData *cdata) {
   char *ebyte; // end byte
@@ -44,7 +38,7 @@ int text_handler(struct ClientData *cdata) {
     answer_text_client(cdata->fd, res, answer, ans_len);
     if (answer)
       free(answer);
-    
+
     unsigned rem = cdata->current_idx - req_len;
     memmove(cdata->buffer, cdata->buffer + req_len, rem);
     cdata->current_idx -= req_len;
@@ -60,8 +54,9 @@ enum code text_parser(char *buf, char *toks[TEXT_MAX_TOKS-1], uint32_t lens[TEXT
   char* saveptr = NULL;
 
   op_str = strtok_r(buf, delim, &saveptr);
-  if (op_str)
-    ntoks++;
+  if (!op_str)
+    return EINVALID;
+  ntoks++;
   for (int i = 0; i < TEXT_MAX_TOKS - 1; i++) {
     toks[i] = strtok_r(NULL, delim, &saveptr);
     if (!toks[i])
@@ -69,24 +64,22 @@ enum code text_parser(char *buf, char *toks[TEXT_MAX_TOKS-1], uint32_t lens[TEXT
     lens[i] = strlen(toks[i]);
     ntoks++;
   }
-
   op = EUNK;
-  if (strtok_r(NULL, buf,&saveptr)) // Hay mas de 3 argumentos
+  if (strtok_r(NULL, buf, &saveptr)) // Hay mas de 3 argumentos
     op = EINVALID;
-  else if (!strcmp(op_str, code_str(STATS))){
+  else if (!strcmp(op_str, code_str(STATS)))
     op = ntoks == 1 ? STATS : EINVALID;
-  }
-  else if (!strcmp(op_str, code_str(GET))){
+  else if (!strcmp(op_str, code_str(GET)))
     op = ntoks == 2 ? GET : EINVALID;
-  }
-  else if (!strcmp(op_str, code_str(DEL))){
+  else if (!strcmp(op_str, code_str(DEL)))
     op = ntoks == 2 ? DEL : EINVALID;
-  }
-  else if (!strcmp(op_str, code_str(PUT))){
+  else if (!strcmp(op_str, code_str(PUT)))
     op = ntoks == 3 ? PUT : EINVALID;
-  }
-  if (op != EINVALID)
-    log(3, "Comando parseado: %s, numero de tokens: %d", code_str(op), ntoks);
+  
+  if (op == EINVALID)
+    log(3, "Comando parseado invalido");
+  else if (op == EUNK)
+    log(3, "Comando parseado desconocido");
   else
     log(3, "Comando parseado: %s, numero de tokens: %d", code_str(op), ntoks);
 	return op;
@@ -98,15 +91,17 @@ int answer_text_client(int fd, enum code res, char *data, uint64_t len) {
   // Bytes totales a escribir
   if (len + strlen(op_string) > TEXT_LIMIT_SIZE) {
     write(fd, "EBIG\n", 5);
-    // log(2, "Respuesta %s a fd %d", "EBIG\n", fd);
+    log(2, "Respuesta %s a fd %d", "EBIG\n", fd);
     return 0;
   }
-  // log(2, "Respuesta %s a fd %d", op_string, fd);
-  secure_write(fd, op_string, strlen(op_string));
+  log(2, "Respuesta %s a fd %d", op_string, fd);
+  write(fd, op_string, strlen(op_string));
   if (data) {
     c = ' ';
     write(fd, &c, 1);
-    secure_write(fd, data, len);
+    if (write(fd, data, len) < 0){
+      return -1;
+    }
   }
   c = '\n';
   write(fd, &c, 1);

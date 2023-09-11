@@ -36,7 +36,7 @@ int bin_handler(struct ClientData* cdata) {
     memmove(cdata->buffer, cdata->buffer + nbytes, rem);
     cdata->current_idx -= nbytes;
   }
-  return 1;
+  return 0;
 }
 
 int bin_parser(char *buf, uint64_t size, enum code *op, char *toks[], uint32_t *lens) {
@@ -77,18 +77,18 @@ int bin_parser(char *buf, uint64_t size, enum code *op, char *toks[], uint32_t *
     idx += lens[i];
   }
 
-  // log(2, "Parseo binario, cantidad de bytes: %u", idx);
+  //log(2, "Parseo binario, cantidad de bytes: %u", idx);
   return idx;
 }
 
 int answer_bin_client(int fd, enum code res, char *data, uint32_t len) {
-  // log(2, "Respuesta op: %s a %d", code_str(res), fd);
+  log(2, "Respuesta op: %s a %d", code_str(res), fd);
   if (write(fd, &res, 1) < 0)
     return -1;
   if (data) {
     uint32_t len_aux = htonl(len);
-    secure_write(fd, &len_aux, 4);
-    if (secure_write(fd, data, len) < 0)
+    write(fd, &len_aux, 4);
+    if (write(fd, data, len) < 0)
       return -1;			
   }
   return 0;

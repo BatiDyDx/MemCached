@@ -88,17 +88,17 @@ int accept_clients(struct eventloop_data eventloop, char mode) {
   while ((csock = accept4(lsock, NULL, 0, SOCK_NONBLOCK)) >= 0) {
     log(1, "Nueva conexion, fd: %d en modo: %d", csock, mode);
     struct ClientData *cdata = client_data_init(csock, mode);
-	if(!cdata) {
-		if(mode == TEXT_MODE)
-			answer_text_client(csock, EOOM, NULL, 0);
-		else
-			answer_bin_client(csock, EOOM, NULL, 0);
-		close(csock);
-		return -1;
-	}
-    event.events = EPOLLIN | EPOLLONESHOT;
-    event.data.ptr = cdata;
-    epoll_ctl(eventloop.epfd, EPOLL_CTL_ADD, csock, &event);
+    if(!cdata) {
+      if(mode == TEXT_MODE)
+        answer_text_client(csock, EOOM, NULL, 0);
+      else
+        answer_bin_client(csock, EOOM, NULL, 0);
+      close(csock);
+    } else {
+      event.events = EPOLL_CSOCK_FLAGS;
+      event.data.ptr = cdata;
+      epoll_ctl(eventloop.epfd, EPOLL_CTL_ADD, csock, &event);
+    }
   }
   if(errno == EAGAIN || errno == EWOULDBLOCK)
     return 0;

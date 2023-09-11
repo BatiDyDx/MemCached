@@ -12,15 +12,6 @@ enum IO_STATUS_CODE {
   CLOSED   // Se cerro la conexion
 };
 
-//! @brief Funcion de escritura segura propuesta por el libro: 
-//! "The linux programming interface - Kerrisk"
-//! mencionado en la pagina 1255.
-//! @param[in] fd File descriptor desde el cual se realizará la lectura.
-//! @param[out] buffer Buffer que almacenará los valores leidos.
-//! @param[in] n Cantidad de bytes a leer desde el file descriptor.
-//! @return Cantidad de bytes leidos. En caso de error, se retorna -1.
-int secure_write(int fd, const void* buffer, size_t n);
-
 //! @brief Uso del programa. Termina la ejecución de este
 void usage();
 

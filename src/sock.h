@@ -4,6 +4,9 @@
 #include <netinet/in.h>
 #define BACKLOG 10
 
+#define EPOLL_LSOCK_FLAGS (EPOLLIN | EPOLLET | EPOLLEXCLUSIVE)
+#define EPOLL_CSOCK_FLAGS (EPOLLIN | EPOLLONESHOT)
+
 // Puertos de escucha sin privilegios
 static const in_port_t text_port = 8888;
 static const in_port_t bin_port  = 8889;

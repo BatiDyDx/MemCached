@@ -9,7 +9,7 @@
 
 #include "log.h"
 
-int __loglevel = 4;
+int __loglevel = 3;
 
 static FILE *logFp = NULL;
 static pthread_mutex_t logLk = PTHREAD_MUTEX_INITIALIZER;

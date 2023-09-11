@@ -77,7 +77,7 @@ void handle_client(struct eventloop_data eventloop, struct ClientData* cdata) {
     return;
   }
   struct epoll_event event;
-  event.events = EPOLLIN | EPOLLONESHOT;
+  event.events = EPOLL_CSOCK_FLAGS;
   event.data.ptr = cdata;
   epoll_ctl(eventloop.epfd, EPOLL_CTL_MOD, cdata->fd, &event);
 }
@@ -114,12 +114,12 @@ void server(int text_sock, int bin_sock, unsigned nthreads) {
   eventloop.bin_sock = bin_sock;
   
   event.data.ptr = listen_data_init(text_sock);
-  event.events = EPOLLIN | EPOLLEXCLUSIVE | EPOLLET;
+  event.events = EPOLL_LSOCK_FLAGS;
   if (epoll_ctl(epfd, EPOLL_CTL_ADD, text_sock, &event) < 0)
     quit("Escucha de epoll en socket de conexion modo texto");
 
   event.data.ptr = listen_data_init(bin_sock);
-  event.events = EPOLLIN | EPOLLEXCLUSIVE | EPOLLET;
+  event.events = EPOLL_LSOCK_FLAGS;
   if (epoll_ctl(epfd, EPOLL_CTL_ADD, bin_sock, &event) < 0)
     quit("Escucha de epoll en socket de conexion modo binario");
 
