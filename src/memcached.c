@@ -21,6 +21,7 @@
 
 Cache cache;
 struct Config {
+  int loglevel;
   unsigned nthreads;
   rlim_t memsize;
   unsigned cache_cells, cache_regions;
@@ -137,8 +138,9 @@ int get_config(int argc, char** argv, struct Config *config) {
   config->memsize  = MEM_LIMIT;
   config->cache_cells = HASH_CELLS;
   config->cache_regions = HASH_REGIONS;
+  config->loglevel  = LOGLEVEL;
 
-  while ((opt = getopt(argc, argv, "n:m:r:c:")) != -1) {
+  while ((opt = getopt(argc, argv, "n:m:r:c:l:")) != -1) {
     switch (opt) {
       case 'm':
         config->memsize = atoi(optarg);
@@ -152,6 +154,9 @@ int get_config(int argc, char** argv, struct Config *config) {
       case 'c':
         config->cache_cells = atoi(optarg);
         break;
+      case 'l':
+        config->loglevel = atoi(optarg);
+        break;
       default:
         usage(argv[0]);
     }
@@ -164,6 +169,7 @@ int main(int argc, char **argv) {
   struct Config config;
 
   get_config(argc, argv, &config);
+  set_loglevel(config.loglevel);
   handle_signals();
   make_bindings(&text_sock, &bin_sock);
 

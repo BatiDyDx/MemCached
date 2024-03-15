@@ -3,6 +3,8 @@
 
 extern int __loglevel;
 
+void set_loglevel(int lvl);
+
 void log_f(char *file, int line, char* fstr, ...);
 
 #ifndef NOLOG
