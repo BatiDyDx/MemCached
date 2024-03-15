@@ -3,6 +3,17 @@
 
 extern int __loglevel;
 
+/* El nivel de logging determina que logs mostrar
+ * Nivel 0: Logs desactivados.
+ * Nivel 1: Logs de configuracion basica del servidor. Aviso de eventos importantes
+    como señales, inicio o cierre de una conexion
+ * Nivel 2: Log de acciones o eventos poco usuales como desalojos, realocameniento
+    de buffers, etc.
+ * Nivel 3: Logs de eventos mas usuales, muestran cuando atienden
+    a un cliente, tamaño del mensaje, codigo a responder, etc.
+  * Nivel 4: El servidor detalla practicamente todas las operaciones que
+    lleva a cabo, dedicado principalmente para debugging.
+*/
 void set_loglevel(int lvl);
 
 void log_f(char *file, int line, char* fstr, ...);

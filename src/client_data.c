@@ -54,7 +54,7 @@ enum IO_STATUS_CODE client_fill_buffer(struct ClientData *cdata) {
 }
 
 int client_increase_buffer(struct ClientData *cdata) {
-  log(3, "Realloc de buffer para fd %d", cdata->fd);
+  log(2, "Realloc de buffer para fd %d", cdata->fd);
   cdata->buffer = drealloc(cdata->buffer, cdata->buf_size, BUFFER_SIZE);
   cdata->buf_size += BUFFER_SIZE;
   if (!cdata->buffer) {

@@ -91,10 +91,10 @@ int answer_text_client(int fd, enum code res, char *data, uint64_t len) {
   // Bytes totales a escribir
   if (len + strlen(op_string) > TEXT_LIMIT_SIZE) {
     write(fd, "EBIG\n", 5);
-    log(2, "Respuesta %s a fd %d", "EBIG\n", fd);
+    log(3, "Respuesta %s a fd %d", "EBIG\n", fd);
     return 0;
   }
-  log(2, "Respuesta %s a fd %d", op_string, fd);
+  log(3, "Respuesta %s a fd %d", op_string, fd);
   write(fd, op_string, strlen(op_string));
   if (data) {
     c = ' ';

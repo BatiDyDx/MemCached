@@ -36,11 +36,11 @@ void limit_mem(rlim_t lim) {
   rl.rlim_max = lim * (1 << 20);
   if (setrlimit(RLIMIT_DATA, (const struct rlimit*) &rl) < 0)
     quit("setrlimit");
-  log(3, "Seteo limite de memoria a %luMB", lim);
+  log(1, "Seteo limite de memoria a %luMB", lim);
 }
 
 void handle_interrupt(int sig) {
-  log(2, "Señal %d atrapada", sig);
+  log(1, "Señal %d atrapada", sig);
   close(eventloop.epfd);
   close(eventloop.text_sock);
   close(eventloop.bin_sock);
@@ -54,12 +54,12 @@ void handle_signals() {
     quit("seteo de signal handler para SIGINT");
   if (signal(SIGTERM, handle_interrupt) == SIG_ERR)
     quit("seteo de signal handler para SIGTERM");
-  log(3, "Configuracion de handlers de señales");
+  log(1, "Configuracion de handlers de señales");
 }
 
 void handle_client(struct eventloop_data eventloop, struct ClientData* cdata) {
   int status;
-  log(2, "handle fd: %d modo: %d", cdata->fd, cdata->mode);
+  log(3, "handle fd: %d modo: %d", cdata->fd, cdata->mode);
   enum IO_STATUS_CODE err = client_fill_buffer(cdata);
   if (err == ERROR || err == CLOSED) { // Cerrar
     epoll_ctl(eventloop.epfd, EPOLL_CTL_DEL, cdata->fd, NULL);
@@ -124,11 +124,11 @@ void server(int text_sock, int bin_sock, unsigned nthreads) {
   if (epoll_ctl(epfd, EPOLL_CTL_ADD, bin_sock, &event) < 0)
     quit("Escucha de epoll en socket de conexion modo binario");
 
-  log(2, "Configuracion epoll con fd %d", epfd);
+  log(1, "Configuracion epoll con fd %d", epfd);
   /* Creacion de threads */
   for (unsigned i = 0; i < nthreads; i++)
     pthread_create(threads + i, NULL, (void* (*)(void*)) worker_thread, NULL);
-  log(3, "Creacion de %u trabajadores", nthreads);
+  log(1, "Creacion de %u trabajadores", nthreads);
   pthread_join(threads[0], NULL);
 }
 

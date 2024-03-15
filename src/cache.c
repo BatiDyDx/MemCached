@@ -57,7 +57,7 @@ Cache cache_init(uint64_t size, uint64_t nregions) {
       quit("Inicializado de lock para region de cache");
   for (uint32_t i = 0; i < size; i++)
     cache->buckets[i] = list_init();
-  log(2, "Inicializado de cache con %lu casillas y %lu regiones", size, nregions);
+  log(1, "Inicializado de cache con %lu casillas y %lu regiones", size, nregions);
   return cache;
 }
 

@@ -128,7 +128,7 @@ int lru_dismiss(Cache cache) {
     int suc = cache_try_dismiss(cache, node->idx, node->data_node);
     next = node->next;
     if (!suc) {
-      log(4, "Intento fallido, indice %lu", node->idx);
+      log(2, "Intento fallido de desalojo, indice %lu", node->idx);
       continue;
     }
     lru_remove(q, node);

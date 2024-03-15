@@ -23,7 +23,7 @@ void* dalloc(size_t size) {
     ptr = malloc(size);
   }
   if (!ptr)
-    log(3, "Muchos intentos de desalojo realizados, imposible satisfacer alocacion de memoria");
+    log(1, "Muchos intentos de desalojo realizados, imposible satisfacer alocacion de memoria");
   return ptr;
 }
 

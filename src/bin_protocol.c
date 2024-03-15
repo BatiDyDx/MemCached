@@ -77,12 +77,12 @@ int bin_parser(char *buf, uint64_t size, enum code *op, char *toks[], uint32_t *
     idx += lens[i];
   }
 
-  //log(2, "Parseo binario, cantidad de bytes: %u", idx);
+  //log(3, "Parseo binario, cantidad de bytes: %u", idx);
   return idx;
 }
 
 int answer_bin_client(int fd, enum code res, char *data, uint32_t len) {
-  log(2, "Respuesta op: %s a %d", code_str(res), fd);
+  log(3, "Respuesta op: %s a %d", code_str(res), fd);
   if (write(fd, &res, 1) < 0)
     return -1;
   if (data) {
