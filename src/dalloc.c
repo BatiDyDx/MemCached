@@ -7,7 +7,8 @@
 
 void* dalloc(size_t size) {
   void* ptr;
-#ifdef DEBUG_DALLOC
+  log(4, "Pedido de memoria de %u bytes", size);
+#ifdef DEBUG_DALLOC // Emulate random memory error allocations
   if (rand() % 15 == 0)
     ptr = NULL;
   else
@@ -15,10 +16,14 @@ void* dalloc(size_t size) {
 #else
   ptr = malloc(size);
 #endif
-  while (!ptr && !lru_empty(cache_get_lru_queue(cache))) {
+  for (int i = 0;
+      i < 10 && !ptr && !lru_empty(cache_get_lru_queue(cache));
+      i++) {
     lru_dismiss(cache);
     ptr = malloc(size);
   }
+  if (!ptr)
+    log(3, "Muchos intentos de desalojo realizados, imposible satisfacer alocacion de memoria");
   return ptr;
 }
 

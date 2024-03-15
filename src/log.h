@@ -11,7 +11,7 @@ void log_f(char *file, int line, char* fstr, ...);
  #define log(l, ...)							\
 	do {								\
 		int __ll = (l);						\
-		if (__loglevel > __ll)					\
+		if (__loglevel >= __ll)					\
 			log_f(__FILE__, __LINE__, __VA_ARGS__);		\
 	} while (0)
 #else

@@ -243,6 +243,7 @@ enum code cache_del(Cache cache, char mode, char* key, unsigned klen) {
 }
 
 enum code cache_stats(Cache cache, char mode, struct Stats* stats) {
+  log(4, "Pedido de estadisticas a cache");
   switch (mode) {
   case TEXT_MODE:
     pthread_mutex_lock(&cache->ts_lock);
@@ -261,6 +262,7 @@ enum code cache_stats(Cache cache, char mode, struct Stats* stats) {
 }
 
 int cache_try_dismiss(Cache cache, uint64_t idx, List data_node) {
+  log(4, "Intento de desalojo en posicion %lu", idx);
   if (WR_TRYLOCK_ROW(idx) != 0) // Casilla bloqueada
     return 0;
   list_remove(data_node);

@@ -71,21 +71,22 @@ LRUNode lru_push(LRUQueue q, unsigned idx, List data_node) {
     return NULL;
   new_node->idx = idx;
   new_node->data_node = data_node;
-  
+
   lru_lock(q);
   if (lru_empty(q))
     q->first = new_node;
   else
     q->last->next = new_node;
-  q->last = new_node;
 
   new_node->prev = q->last;
+  q->last = new_node;
   new_node->next = NULL;
   lru_unlock(q);
   return new_node;
 }
 
 void lru_remove(LRUQueue q, LRUNode node) {
+  assert(node != NULL);
   lru_lock(q);
   if (q->first == node) {
     q->first = node->next;
@@ -104,6 +105,7 @@ void lru_remove(LRUQueue q, LRUNode node) {
 }
 
 void reset_lru_status(LRUQueue q, LRUNode node) {
+  assert(node != NULL);
   lru_lock(q);
   lru_remove(q, node);
 
@@ -121,11 +123,14 @@ int lru_dismiss(Cache cache) {
   int i;
   LRUQueue q = cache_get_lru_queue(cache);
   lru_lock(q);
-  LRUNode node = q->first;
-  for (i = 0; i < LRU_FREE_SIZE && node; node = node->next) {
+  LRUNode node = q->first, next;
+  for (i = 0; i < LRU_FREE_SIZE && node; node = next) {
     int suc = cache_try_dismiss(cache, node->idx, node->data_node);
-    if (!suc)
+    next = node->next;
+    if (!suc) {
+      log(4, "Intento fallido, indice %lu", node->idx);
       continue;
+    }
     lru_remove(q, node);
     lru_free_node(node);
     i++;
