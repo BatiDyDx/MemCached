@@ -7,9 +7,11 @@
 #include <errno.h>
 #include <string.h>
 
-void usage(char *name) {
-  fprintf(stderr, "Uso: %s [-n hilos] [-m memoria]\n", name);
-  fprintf(stderr, "     %*s [-c celdas] [-r regiones] [-l loglevel]\n", (int) strlen(name), "");
+void usage() {
+  const char *name = "./memcached";
+  fprintf(stderr, "Usage: %s [-n <num threads>] [-m <memory size>] [-h]\n", name);
+  fprintf(stderr, "       %*s [-c <cache cells>] [-r <cache regions>] [-l <log level>]\n",
+          (int) strlen(name), "");
   exit(EXIT_FAILURE);
 }
 

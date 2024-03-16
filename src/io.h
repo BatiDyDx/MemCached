@@ -13,6 +13,6 @@ enum IO_STATUS_CODE {
 };
 
 //! @brief Uso del programa. Termina la ejecución de este
-void usage();
+void usage(void);
 
 #endif

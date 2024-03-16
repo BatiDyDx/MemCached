@@ -140,7 +140,7 @@ int get_config(int argc, char** argv, struct Config *config) {
   config->cache_regions = HASH_REGIONS;
   config->loglevel  = LOGLEVEL;
 
-  while ((opt = getopt(argc, argv, "n:m:r:c:l:")) != -1) {
+  while ((opt = getopt(argc, argv, "n:m:r:c:l:h")) != -1) {
     switch (opt) {
       case 'm':
         config->memsize = atoi(optarg);
@@ -157,8 +157,9 @@ int get_config(int argc, char** argv, struct Config *config) {
       case 'l':
         config->loglevel = atoi(optarg);
         break;
+      case 'h':
       default:
-        usage(argv[0]);
+        usage();
     }
   }
   return 0;
