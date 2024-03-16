@@ -1,27 +1,42 @@
 CC = gcc
-CFLAGS += -Wall -Wextra -Werror #-O3
+CFLAGS += -Wall -Wextra -Werror
 LDFLAGS += -pthread
-SOURCE = src/bin_protocol.o src/cache.o src/common.o src/dalloc.o src/io.o\
-	src/ll.o src/log.o src/lru.o src/memcached.o src/sock.o src/stats.o src/text_protocol.o\
-	src/client_data.o
+SOURCE_DIR =  src
+SOURCE =  bin_protocol.o  \
+          cache.o         \
+          client_data.o   \
+          common.o        \
+          dalloc.o        \
+          io.o            \
+          ll.o            \
+          log.o           \
+          lru.o           \
+          memcached.o     \
+          sock.o          \
+          stats.o         \
+          text_protocol.o
 
-all: memcached
+SOURCE := $(patsubst %,$(SOURCE_DIR)/%,$(SOURCE))
+PROGRAM = memcached
 
-memcached: $(SOURCE)
-	$(CC) $(CFLAGS) $(LDFLAGS) $(SOURCE) -o memcached
+all: $(PROGRAM)
+
+$(PROGRAM): $(SOURCE)
+	@echo ":: Compiling $$(tput bold)$(PROGRAM)$$(tput sgr0)"
+	$(CC) $(CFLAGS) $(LDFLAGS) $(SOURCE) -o $(PROGRAM)
 
 clean:
-	rm -f memcached src/*.o
+	@echo ":: Cleaning directories"
+	rm -f $(PROGRAM) $(SOURCE)
 
 run: all
-	./memcached
-
-docs:
-	doxygen doxygen.cfg
+	@echo ":: Running $$(tput bold)$(PROGRAM)$$(tput sgr0)"
+	./$(PROGRAM)
 
 .deps.mk:
+	@echo ":: Writing source files dependencies"
 	$(CC) -MM src/*.c > .deps.mk
 
-.PHONY: all clean run docs
+.PHONY: all clean run
 
 include .deps.mk
